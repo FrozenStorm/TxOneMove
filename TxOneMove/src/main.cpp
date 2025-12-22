@@ -156,42 +156,42 @@ void readMagnetSensor() {
 }
 
 void readBNO055Sensor() {
-    uint8_t sys, gyro, accel, mag;
-    bno.getCalibration(&sys, &gyro, &accel, &mag);
-    Serial.print("Status: SYS:");
-    Serial.print(sys);
-    Serial.print(" G:");
-    Serial.print(gyro);
-    Serial.print(" A:");
-    Serial.print(accel);
-    Serial.print(" M:");
-    Serial.println(mag);
+    // uint8_t sys, gyro, accel, mag;
+    // bno.getCalibration(&sys, &gyro, &accel, &mag);
+    // Serial.print("Status: SYS:");
+    // Serial.print(sys);
+    // Serial.print(" G:");
+    // Serial.print(gyro);
+    // Serial.print(" A:");
+    // Serial.print(accel);
+    // Serial.print(" M:");
+    // Serial.println(mag);
 
-    imu::Quaternion quat = bno.getQuat();
-    Serial.print("Quaternion/BNO055_W[raw]: ");
-    Serial.println(quat.w());
-    Serial.print("Quaternion/BNO055_X[raw]: ");
-    Serial.println(quat.x());
-    Serial.print("Quaternion/BNO055_Y[raw]: ");
-    Serial.println(quat.y());
-    Serial.print("Quaternion/BNO055_Z[raw]: ");
-    Serial.println(quat.z());
+    // imu::Quaternion quat = bno.getQuat();
+    // Serial.print("Quaternion/BNO055_W[raw]: ");
+    // Serial.println(quat.w());
+    // Serial.print("Quaternion/BNO055_X[raw]: ");
+    // Serial.println(quat.x());
+    // Serial.print("Quaternion/BNO055_Y[raw]: ");
+    // Serial.println(quat.y());
+    // Serial.print("Quaternion/BNO055_Z[raw]: ");
+    // Serial.println(quat.z());
 
-    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-    Serial.print("Euler/BNO055_Heading[raw]: ");
-    Serial.println(euler.x());
-    Serial.print("Euler/BNO055_Roll[raw]: ");
-    Serial.println(euler.y());
-    Serial.print("Euler/BNO055_Pitch[raw]: ");
-    Serial.println(euler.z());
+    // imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+    // Serial.print("Euler/BNO055_Heading[raw]: ");
+    // Serial.println(euler.x());
+    // Serial.print("Euler/BNO055_Roll[raw]: ");
+    // Serial.println(euler.y());
+    // Serial.print("Euler/BNO055_Pitch[raw]: ");
+    // Serial.println(euler.z());
 
-    imu::Vector<3> linAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-    Serial.print("LinearAccel/BNO055_X[raw]: ");
-    Serial.println(linAccel.x());
-    Serial.print("LinearAccel/BNO055_Y[raw]: ");
-    Serial.println(linAccel.y());
-    Serial.print("LinearAccel/BNO055_Z[raw]: ");
-    Serial.println(linAccel.z());
+    // imu::Vector<3> linAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+    // Serial.print("LinearAccel/BNO055_X[raw]: ");
+    // Serial.println(linAccel.x());
+    // Serial.print("LinearAccel/BNO055_Y[raw]: ");
+    // Serial.println(linAccel.y());
+    // Serial.print("LinearAccel/BNO055_Z[raw]: ");
+    // Serial.println(linAccel.z());
 
     imu::Vector<3> gravity = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
     Serial.print("Gravity/BNO055_X[raw]: ");
