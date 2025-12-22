@@ -2,12 +2,14 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <Arduino.h>
+#include <HardwareSerial.h>
 
 #define ThrottleSensorPin A0 // Analog pin connected to the throttle sensor
 #define ExpressLRSUartTxPin 7 // UART TX pin for ExpressLRS module
 #define ExpressLRSUartRxPin 8 // UART RX pin for ExpressLRS module
 #define GpsUartTxPin 3 // UART TX pin for GPS module
 #define GpsUartRxPin 4 // UART RX pin for GPS module
+#define GpsUartBaud 9600
 #define BuzzerPin 9 // Pin connected to the buzzer
 #define MotionSensorSdaPin 5 // I2C SDA pin for motion sensor
 #define MotionSensorSclPin 6 // I2C SCL pin for motion sensor
@@ -15,6 +17,38 @@
 
 TwoWire I2CBNO = TwoWire(0);      // eigenen I2C-Bus anlegen (Bus 0 oder 1)
 Adafruit_BNO055 bno = Adafruit_BNO055(55, MotionSensorAddress, &I2CBNO);
+
+HardwareSerial GPS_Serial(2);  // UART3 = Serial2 auf ESP32-S3
+static String gpsBuffer = "";
+static bool inSentence = false;
+
+
+// Globale Variablen für Non-Blocking
+unsigned long lastBNO = 0;
+unsigned long lastGPS = 0;
+unsigned long lastMagnet = 0;
+unsigned long lastHeartbeat = 0;
+const unsigned long BNO_INTERVAL = 100;    // 10Hz BNO055
+const unsigned long GPS_INTERVAL = 50;     // 20Hz GPS Check
+const unsigned long MAG_INTERVAL = 500;    // 2Hz Magnet
+const unsigned long HEARTBEAT_INTERVAL = 500; // 2Hz LED Heartbeat
+
+void initGps(){
+  GPS_Serial.begin(GpsUartBaud, SERIAL_8N1, GpsUartRxPin, GpsUartTxPin);
+  delay(2000);
+  Serial.println("=== ATGM336H GPS auf ESP32-S3 UART3 ===");
+  Serial.printf("GPS UART3: RX=%d, TX=%d, Baud=%d\n", GpsUartRxPin, GpsUartTxPin, GpsUartBaud);
+  // PMTK-Kommandos über Hardware UART3
+  GPS_Serial.println("$PMTK101*32");  // Cold Start
+  delay(100);
+  GPS_Serial.println("$PMTK220,1000*1F");  // 1Hz Update
+  delay(100);
+  GPS_Serial.println("$PMTK314,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28");  // GGA+RMC
+  delay(100);
+  GPS_Serial.println("$PMTK301,2*2E");  // Position Mode
+  Serial.println("✓ GPS konfiguriert (UART3)");
+  Serial.println("GPS bereit - 1Hz Positionen...");
+}
 
 void initBNO055() {
   if (!bno.begin(OPERATION_MODE_CONFIG)) {
@@ -135,6 +169,8 @@ void setup() {
   }
   initBNO055();
 
+  initGps();
+
   // Init Buzzer Pin
   pinMode(BuzzerPin, OUTPUT);
   digitalWrite(BuzzerPin, HIGH); // Buzzer aus
@@ -156,43 +192,6 @@ void readMagnetSensor() {
 }
 
 void readBNO055Sensor() {
-    // uint8_t sys, gyro, accel, mag;
-    // bno.getCalibration(&sys, &gyro, &accel, &mag);
-    // Serial.print("Status: SYS:");
-    // Serial.print(sys);
-    // Serial.print(" G:");
-    // Serial.print(gyro);
-    // Serial.print(" A:");
-    // Serial.print(accel);
-    // Serial.print(" M:");
-    // Serial.println(mag);
-
-    // imu::Quaternion quat = bno.getQuat();
-    // Serial.print("Quaternion/BNO055_W[raw]: ");
-    // Serial.println(quat.w());
-    // Serial.print("Quaternion/BNO055_X[raw]: ");
-    // Serial.println(quat.x());
-    // Serial.print("Quaternion/BNO055_Y[raw]: ");
-    // Serial.println(quat.y());
-    // Serial.print("Quaternion/BNO055_Z[raw]: ");
-    // Serial.println(quat.z());
-
-    // imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-    // Serial.print("Euler/BNO055_Heading[raw]: ");
-    // Serial.println(euler.x());
-    // Serial.print("Euler/BNO055_Roll[raw]: ");
-    // Serial.println(euler.y());
-    // Serial.print("Euler/BNO055_Pitch[raw]: ");
-    // Serial.println(euler.z());
-
-    // imu::Vector<3> linAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-    // Serial.print("LinearAccel/BNO055_X[raw]: ");
-    // Serial.println(linAccel.x());
-    // Serial.print("LinearAccel/BNO055_Y[raw]: ");
-    // Serial.println(linAccel.y());
-    // Serial.print("LinearAccel/BNO055_Z[raw]: ");
-    // Serial.println(linAccel.z());
-
     imu::Vector<3> gravity = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
     Serial.print("Gravity/BNO055_X[raw]: ");
     Serial.println(gravity.x());
@@ -202,19 +201,178 @@ void readBNO055Sensor() {
     Serial.println(gravity.z());
 }
 
+float nmeaToDecimal(String coord, String dir) {
+  if (coord == "" || coord.length() < 2) return 0.0;
+  
+  float degrees = coord.substring(0, coord.length() - 2).toFloat();
+  float minutes = coord.substring(coord.length() - 2).toFloat() / 60.0;
+  float decimal = degrees + minutes;
+  
+  if (dir == "S" || dir == "W") decimal = -decimal;
+  return decimal;
+}
+
+void parseRMC(String rmc) {
+  // NMEA RMC: $GPRMC,123519,A,4807.038,N,01131.000,E,0.02,087.7,230394,004.2,W,A*47
+  String fields[12];
+  int fieldCount = 0;
+  
+  int start = rmc.indexOf('$') + 1;
+  int end = 0;
+  
+  // Alle Felder extrahieren
+  while (start < rmc.length() && fieldCount < 12) {
+    end = rmc.indexOf(',', start);
+    if (end == -1) end = rmc.indexOf('*', start);
+    if (end == -1) end = rmc.length();
+    
+    fields[fieldCount] = rmc.substring(start, end);
+    fields[fieldCount].trim();
+    fieldCount++;
+    
+    start = end + 1;
+  }
+  
+  if (fieldCount < 9) return;  // Mindestens Status, Lat, Lon, Speed
+  
+  // Felder zuweisen (robust!)
+  String status = fields[2];           // A=active, V=void
+  String lat_str = fields[3];          // 4807.038
+  String lat_dir = fields[4];          // N
+  String lon_str = fields[5];          // 01131.000  
+  String lon_dir = fields[6];          // E
+  String speed_kts = fields[7];        // 0.02
+  
+  float lat = nmeaToDecimal(lat_str, lat_dir);
+  float lon = nmeaToDecimal(lon_str, lon_dir);
+  float speed = speed_kts.toFloat() * 1.852;  // Knoten → km/h
+  
+  Serial.printf("RMC: %.6f,%.6f,%.1fkm/h,%s,%s\n", 
+                lat, lon, speed, status.c_str(), fields[9].c_str());  // Datum
+}
+
+
+void parseGGA(String gga) {
+  // NMEA GGA: $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47
+  String fields[15];
+  int fieldCount = 0;
+  
+  int start = gga.indexOf('$') + 1;
+  int end = 0;
+  
+  while (start < gga.length() && fieldCount < 15) {
+    end = gga.indexOf(',', start);
+    if (end == -1) end = gga.indexOf('*', start);
+    if (end == -1) end = gga.length();
+    
+    fields[fieldCount] = gga.substring(start, end);
+    fields[fieldCount].trim();
+    fieldCount++;
+    
+    start = end + 1;
+  }
+  
+  if (fieldCount < 10) return;
+  
+  String lat_str = fields[2];
+  String lat_dir = fields[3];
+  String lon_str = fields[4];
+  String lon_dir = fields[5];
+  String fix = fields[6];
+  String sats = fields[7];
+  String hdop = fields[8];
+  String alt = fields[9];
+  
+  float lat = nmeaToDecimal(lat_str, lat_dir);
+  float lon = nmeaToDecimal(lon_str, lon_dir);
+  float altitude = alt.toFloat();
+  int num_sats = sats.toInt();
+  bool valid = (fix == "1");
+  
+  Serial.printf("GGA: %.6f,%.6f,%4.1fm,%2dsats,%.1f, FIX:%s\n", 
+                lat, lon, altitude, num_sats, hdop.toFloat(), valid ? "YES" : "NO");
+}
+
+
+
+void readGPSNonBlocking() {
+  static String gpsBuffer = "";
+  static bool inSentence = false;
+  
+  while (GPS_Serial.available()) {
+    char c = GPS_Serial.read();
+    
+    if (c == '$') {
+      if (inSentence && gpsBuffer.length() > 5) {
+        // Vorherigen Satz parsen
+        gpsBuffer.trim();
+        if (gpsBuffer.startsWith("$GPGGA") || gpsBuffer.startsWith("$GNGGA")) {
+          parseGGA(gpsBuffer);
+        } else if (gpsBuffer.startsWith("$GPRMC") || gpsBuffer.startsWith("$GNRMC")) {
+          parseRMC(gpsBuffer);
+        }
+      }
+      gpsBuffer = "$";
+      inSentence = true;
+    } 
+    else if (inSentence && c == '\n') {
+      gpsBuffer += '\n';
+      gpsBuffer.trim();
+      
+      if (gpsBuffer.startsWith("$GPGGA") || gpsBuffer.startsWith("$GNGGA")) {
+        parseGGA(gpsBuffer);
+      } else if (gpsBuffer.startsWith("$GPRMC") || gpsBuffer.startsWith("$GNRMC")) {
+        parseRMC(gpsBuffer);
+      }
+      
+      gpsBuffer = "";
+      inSentence = false;
+    } 
+    else if (inSentence && gpsBuffer.length() < 100) {  // Buffer Overflow Schutz
+      gpsBuffer += c;
+    }
+  }
+}
+
 void loop() {
-  readMagnetSensor();
-  // displaySensorDetails();
-  readBNO055Sensor();
-
-  delay(100); // wait for 20 milliseconds before next reading
-
-  // LED heartbeat: toggle once per second
-  static bool led = false;
-  static unsigned hb = 0;
-  if ((++hb % 10) == 0) {
-    led = !led;
-    digitalWrite(LED_BUILTIN, led ? HIGH : LOW);
+  unsigned long now = millis();
+  
+  // BNO055 Gravity (10Hz)
+  if (now - lastBNO >= BNO_INTERVAL) {
+    readBNO055Sensor();
+    lastBNO = now;
+  }
+  // Kalibrierungsstatus alle 5s
+  static unsigned long lastCalib = 0;
+  if (now - lastCalib > 5000) {
+    uint8_t sys, gyro, accel, mag;
+    bno.getCalibration(&sys, &gyro, &accel, &mag);
+    Serial.print("Status: SYS:");
+    Serial.print(sys);
+    Serial.print(" G:"); Serial.print(gyro);
+    Serial.print(" A:"); Serial.print(accel);
+    Serial.print(" M:"); Serial.println(mag);
+    lastCalib = now;
+  }
+  
+  // GPS non-blocking Check (20Hz)
+  if (now - lastGPS >= GPS_INTERVAL) {
+    readGPSNonBlocking();
+    lastGPS = now;
+  }
+  
+  // Magnet Sensor (2Hz)
+  if (now - lastMagnet >= MAG_INTERVAL) {
+    readMagnetSensor();
+    lastMagnet = now;
+  }
+  
+  // LED Heartbeat (1Hz)
+  static bool ledState = false;
+  if (now - lastHeartbeat >= HEARTBEAT_INTERVAL) {
+    digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
+    ledState = !ledState;
+    lastHeartbeat = now;
   }
 }
 
