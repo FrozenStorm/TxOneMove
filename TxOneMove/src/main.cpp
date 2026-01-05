@@ -43,7 +43,7 @@ TinyGPSPlus gps;               // ✅ TinyGPS++
 #define BITS_PER_CHANNEL 11
 #define CHANNEL_DATA_LENGTH (CHANNEL_COUNT * BITS_PER_CHANNEL / 8)  // 22 Bytes
 
-HardwareSerial crsfSerial(1);  // UART1
+// HardwareSerial crsfSerial(1);  // UART1
 
 uint8_t crsfFrame[CRSF_FRAME_SIZE_MAX];
 
@@ -122,7 +122,7 @@ void initCRSF() {
   Serial.printf("CRSF UART1: RX=%d, TX=%d, Baud=400000\n", TxModuleUartRxPin, TxModuleUartTxPin);
   
   // UART1 mit Pins 7(TX), 8(RX) initialisieren: 400kbaud, 8E2
-  crsfSerial.begin(400000, SERIAL_8N1, TxModuleUartTxPin, 37);
+  Serial1.begin(400000, SERIAL_8N1, TxModuleUartTxPin, 37);
   pinMode(TxModuleUartTxPin, INPUT);
   }
 
@@ -196,10 +196,10 @@ void sendCrsfFrame() {
   crsfFrame[frameLen + 2 - 1] = crc;
   
   // Senden
-  crsfSerial.begin(400000, SERIAL_8N1, 37, TxModuleUartTxPin);
-  crsfSerial.write(crsfFrame, frameLen+2);
-  crsfSerial.flush();
-  crsfSerial.begin(400000, SERIAL_8N1, TxModuleUartTxPin, 37);
+  Serial1.begin(400000, SERIAL_8N1, 37, TxModuleUartTxPin);
+  Serial1.write(crsfFrame, frameLen+2);
+  Serial1.flush();
+  Serial1.begin(400000, SERIAL_8N1, TxModuleUartTxPin, 37);
   pinMode(TxModuleUartTxPin, INPUT);
 }
 
@@ -256,8 +256,8 @@ uint8_t crsfPos = 0;
 uint8_t crsfState = 0;   // 0: sync wait, 1: length, 2: type, 3: payload+CRC
 
 void readCRSF() {
-  while (crsfSerial.available()) {
-    uint8_t byte = crsfSerial.read();
+  while (Serial1.available()) {
+    uint8_t byte = Serial1.read();
     switch (crsfState) {
       case 0:  // Sync Byte warten
         if (byte == CRSF_ADDRESS_REMOTE_CONTROL) {
