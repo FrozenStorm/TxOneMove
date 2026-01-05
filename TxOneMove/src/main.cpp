@@ -35,7 +35,9 @@ TinyGPSPlus gps;               // ✅ TinyGPS++
 // ----------------- CRSF -----------------
 // CRSF Konstanten
 #define CRSF_ADDRESS_TRANSMITTER_MODULE 0xEE
+#define CRSF_ADDRESS_REMOTE_CONTROL 0xEA
 #define CRSF_FRAME_RC_CHANNELS_PACKED 0x16
+#define CRSF_BATTERY_TYPE 0x08 
 #define CRSF_FRAME_SIZE_MAX 64
 #define CHANNEL_COUNT 16
 #define BITS_PER_CHANNEL 11
@@ -58,7 +60,7 @@ const unsigned long BNO_INTERVAL = 100;     // 10Hz
 const unsigned long MAG_INTERVAL = 500;     // 2Hz  
 const unsigned long HEARTBEAT_INTERVAL = 500;
 const unsigned long CALIB_INTERVAL = 5000;
-const unsigned long CRSF_INTERVAL = 10;    // 100Hz
+const unsigned long CRSF_INTERVAL = 5;    // 100Hz
 
 void initGps() {
   GPS_Serial.begin(GpsUartBaud, SERIAL_8N1, GpsUartRxPin, GpsUartTxPin);
@@ -120,7 +122,8 @@ void initCRSF() {
   Serial.printf("CRSF UART1: RX=%d, TX=%d, Baud=400000\n", TxModuleUartRxPin, TxModuleUartTxPin);
   
   // UART1 mit Pins 7(TX), 8(RX) initialisieren: 400kbaud, 8E2
-  crsfSerial.begin(400000, SERIAL_8N1, TxModuleUartRxPin, TxModuleUartTxPin);
+  crsfSerial.begin(400000, SERIAL_8N1, TxModuleUartTxPin, 37);
+  pinMode(TxModuleUartTxPin, INPUT);
   }
 
 void setup() {
@@ -139,7 +142,6 @@ void setup() {
   analogReadResolution(12);  // 12-Bit Auflösung (0-4095)
   
   Serial.println("🚀 Multi-Sensor System READY!");
-  Serial.println("Gravity/BNO055_X/Y/Z + GPS/TinyGPS++ + Magnet");
 }
 
 unsigned char crc8tab[256] = {
@@ -160,10 +162,10 @@ unsigned char crc8tab[256] = {
     0xD6, 0x03, 0xA9, 0x7C, 0x28, 0xFD, 0x57, 0x82, 0xFF, 0x2A, 0x80, 0x55, 0x01, 0xD4, 0x7E, 0xAB,
     0x84, 0x51, 0xFB, 0x2E, 0x7A, 0xAF, 0x05, 0xD0, 0xAD, 0x78, 0xD2, 0x07, 0x53, 0x86, 0x2C, 0xF9};
 
-uint8_t crc8(const uint8_t * ptr, uint8_t len)
+uint8_t crc8(const uint8_t * ptr, uint8_t length)
 {
     uint8_t crc = 0;
-    for (uint8_t i=0; i<len; i++)
+    for (uint8_t i=0; i<length; i++)
         crc = crc8tab[crc ^ *ptr++];
     return crc;
 }
@@ -194,7 +196,11 @@ void sendCrsfFrame() {
   crsfFrame[frameLen + 2 - 1] = crc;
   
   // Senden
+  crsfSerial.begin(400000, SERIAL_8N1, 37, TxModuleUartTxPin);
   crsfSerial.write(crsfFrame, frameLen+2);
+  crsfSerial.flush();
+  crsfSerial.begin(400000, SERIAL_8N1, TxModuleUartTxPin, 37);
+  pinMode(TxModuleUartTxPin, INPUT);
 }
 
 void readMagnetSensor() {
@@ -202,6 +208,10 @@ void readMagnetSensor() {
   float voltage = raw * (3.3 / 4095.0);
   Serial.printf("ADC/Throttle[V]: %.2f\n", voltage);
   // ch1Value = map(raw, 0, 4095, 988, 2012);  // CRSF_RC_MIN=988, CRSF_RC_MAX=2012
+  float b = 1.66;
+  float a = (2.19 - b) / (100*100);
+  float throttlePercent = sqrt((voltage - b) / a);
+  Serial.printf("Channel/Throttle[%%]: %.1f\n", throttlePercent);
 }
 
 void readBatteryVoltage() {
@@ -237,8 +247,79 @@ void readGPSTinyGPS() {
 }
 
 void updateCRSF() {
-    channels[0] = 992 + (sin(millis() / 1000.0) * 400);  // Simuliere Sinus-Welle
+    // channels[0] = 992 + (sin(millis() / 1000.0) * 400);  // Simuliere Sinus-Welle
     sendCrsfFrame();
+}
+
+uint8_t crsfBuffer[64];  // Max Telegram-Größe
+uint8_t crsfPos = 0;
+uint8_t crsfState = 0;   // 0: sync wait, 1: length, 2: type, 3: payload+CRC
+
+void readCRSF() {
+  while (crsfSerial.available()) {
+    uint8_t byte = crsfSerial.read();
+    switch (crsfState) {
+      case 0:  // Sync Byte warten
+        if (byte == CRSF_ADDRESS_REMOTE_CONTROL) {
+          // Serial.println("CRSF: Sync Byte empfangen");
+          crsfState = 1;
+          crsfPos = 0;
+          crsfBuffer[crsfPos++] = byte;
+        }
+        break;
+        
+      case 1:  // Length
+        // Serial.printf("CRSF: Length Byte empfangen %d\n", byte );
+        crsfBuffer[crsfPos++] = byte;
+        crsfState = 2;
+        break;
+        
+      case 2:  // Type (Adressfeld)
+      // if(byte != 0x3A) Serial.printf("CRSF: Type Byte empfangen %x\n", byte );
+        crsfBuffer[crsfPos++] = byte;
+        if (byte == CRSF_BATTERY_TYPE) {  // Battery Sensor?
+          crsfState = 3;
+        } else {
+          crsfState = 0;  // Nur Battery verarbeiten
+        }
+        break;
+        
+      case 3:  // Payload + CRC sammeln
+        // Serial.printf("CRSF: Battery Byte empfangen %x\n", byte );
+        crsfBuffer[crsfPos++] = byte;
+        uint8_t len = crsfBuffer[1];
+        if (crsfPos >= len + 2) {  // Vollständig: DeviceAddr(1) + Type(1) + Payload(len-4) + CRC(1) + Len(1)? Warte, Standard: Sync+Len+Type+Payload+(Len-3)+CRC
+          // CRC prüfen (über Len+Type+Payload)
+          // print buffer for debug as hex bytes
+          for (int i = 0; i < crsfPos; i++) {
+            Serial.printf("%02X ", crsfBuffer[i]);
+          }
+          Serial.println();
+          uint8_t calc_crc = crc8(&crsfBuffer[2], len-1);
+          Serial.printf("CRSF: Len: %d\n", len);
+          Serial.printf("CRSF: Calculated CRC: %02X, Received CRC: %02X\n", calc_crc, crsfBuffer[crsfPos - 1]);
+          if (calc_crc == crsfBuffer[crsfPos - 1]) {
+            // Battery Daten extrahieren (Payload start bei Index 3)
+            uint16_t voltage = (crsfBuffer[3] << 8) | crsfBuffer[4];      // mV
+            uint16_t current = (crsfBuffer[5] << 8) | crsfBuffer[6];      // mA
+            uint16_t consumption = (crsfBuffer[7] << 8) | crsfBuffer[8];  // mAh
+            float v = voltage / 10.0;  // 0.01V steps -> Volt
+            float a = current / 10.0;  // 0.01A steps -> Amp
+            
+            // Ausgabe über Serial
+            Serial.print("Telemetry/Battery[V]: ");
+            Serial.println(v, 2);
+            Serial.print("Telemetry/Battery[A]: ");
+            Serial.println(a, 2);
+            Serial.print("Telemetry/Battery[mAh]: ");
+            Serial.println(consumption);
+          }
+          crsfState = 0;
+          crsfPos = 0;
+        }
+        break;
+    }
+  }
 }
 
 void updateIo()
@@ -257,11 +338,12 @@ void updateIo()
 }
 
 void loop() {
-  // updateIo();
+  updateIo();
+  readCRSF();
 
   unsigned long now = millis();
   
-  // BNO055 Gravity (10Hz)
+  // // BNO055 Gravity (10Hz)
   // if (now - lastBNO >= BNO_INTERVAL) {
   //   readBNO055Sensor();
   //   lastBNO = now;
@@ -275,10 +357,10 @@ void loop() {
   //   lastCalib = now;
   // }
   
-  // TinyGPS++ GPS (kontinuierlich, non-blocking!)
+  // // TinyGPS++ GPS (kontinuierlich, non-blocking!)
   // readGPSTinyGPS();
   
-  // ADC Sensor (2Hz)
+  // // ADC Sensor (2Hz)
   // if (now - lastMagnet >= MAG_INTERVAL) {
   //   readMagnetSensor();
   //   readBatteryVoltage();
@@ -286,10 +368,10 @@ void loop() {
   // }
   
   // LED Heartbeat (2Hz)
-  // if (now - lastHeartbeat >= HEARTBEAT_INTERVAL) {
-  //   digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-  //   lastHeartbeat = now;
-  // }
+  if (now - lastHeartbeat >= HEARTBEAT_INTERVAL) {
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    lastHeartbeat = now;
+  }
 
   // CRSF Update (100Hz)
   if(now - lastCRSF >= CRSF_INTERVAL) {
