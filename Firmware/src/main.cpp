@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#include "esp_clk.h"
+#include "esp32/clk.h"
 #include "AnalogToDigital.hpp"
 #include "DigitalToFunction.hpp"
 #include "Expo.hpp"
@@ -13,6 +13,7 @@
 #include "Model.hpp"
 #include "DualRate.hpp"
 #include "SensorToDigital.hpp"
+#include "BluetoothComm.h"
 
 #include <Adafruit_BNO055.h>
 #include <TinyGPSPlus.h>
@@ -46,6 +47,7 @@ FunctionToChannel                 functionToChannel = FunctionToChannel(radioDat
 Transmitter                       transmitter = Transmitter(radioData);
 Model                             model = Model(radioData);
 SensorToDigital                   sensorToDigital = SensorToDigital(radioData, &bno, &gps);
+BluetoothComm                     bluetoothComm = BluetoothComm(radioData);
 /* -------------------- Functions Prototypes -------------------------------------------------------------------*/
 void myMainTask(void *pvParameters);
 void mySerialTask(void *pvParameters);
@@ -79,7 +81,9 @@ void setup() {
 
   // Create Tasks
   xTaskCreatePinnedToCore(myMainTask, "MainTask", 20000, NULL, 2, NULL, 1);
-  // xTaskCreatePinnedToCore(mySerialTask, "SerialTask", 10000, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(mySerialTask, "SerialTask", 10000, NULL, 1, NULL, 1);
+
+  bluetoothComm.begin();
   
   Serial.println("Init done");
 }
@@ -130,6 +134,21 @@ void initGps() {
   Serial.println("✓ GPS konfiguriert (TinyGPS++ ready)");
 }
 
+void printMemoryInfo() {
+    Serial.println("=== Memory Info ===");
+    Serial.print("Free Heap: ");
+    Serial.print(ESP.getFreeHeap());
+    Serial.println(" Bytes");
+    
+    Serial.print("Stack High Water Mark (Core 0): ");
+    Serial.print(uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandleForCPU(0)));
+    Serial.println(" Bytes");
+    
+    Serial.print("Stack High Water Mark (Core 1): ");
+    Serial.print(uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandleForCPU(1)));
+    Serial.println(" Bytes");
+}
+
 /* -------------------- Main -----------------------------------------------------------------------------------*/
 void loop() { // Core 1
 }
@@ -150,6 +169,7 @@ void myMainTask(void *pvParameters) {
     mixer.doFunction(); // <<1ms
     functionToChannel.doFunction(); // <<1ms
     transmitter.doFunction(); // <<1ms
+    bluetoothComm.doFunction(lastWakeTime);
   }
 }
 
