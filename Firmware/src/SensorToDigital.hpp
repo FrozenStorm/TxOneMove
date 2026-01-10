@@ -4,27 +4,90 @@
 #include <Adafruit_BNO055.h>
 #include <TinyGPSPlus.h>
 
+#define MOTION_SENSOR_ID      55
+#define MOTION_SENSOR_ADDRESS 0x29
+#define MOTION_SENSOR_BUS     0
+#define PIN_MOTION_SENSOR_SCL 6
+#define PIN_MOTION_SENSOR_SDA 5
+
+#define GPS_SERIAL_NUM        2 // UART3
+#define PIN_GPS_TX            3
+#define PIN_GPS_RX            4
+#define GPS_BAUD              9600
+
 
 class SensorToDigital : public RadioClass
 {
 private:
-    Adafruit_BNO055*    bno;
-    TinyGPSPlus*        gps;
+    TwoWire             I2CBNO = TwoWire(MOTION_SENSOR_BUS);
+    Adafruit_BNO055     bno = Adafruit_BNO055(MOTION_SENSOR_ID, MOTION_SENSOR_ADDRESS, &I2CBNO);
+    TinyGPSPlus         gps;
 
     float analogToDigital(float value, const RadioData::SensorToDigitalData::AngleLimit& limit);
     void updateOrientation();
     float accelToAngle(float accelValue);
     void limitToRange(float &value, float min, float max);
     void selectAxis();
+    void initGps();
+    void initBNO055();
 public:
-    SensorToDigital(RadioData& newRadioData, Adafruit_BNO055* newBno, TinyGPSPlus* newGps);
+    SensorToDigital(RadioData& newRadioData):RadioClass(newRadioData){}
     void doFunction();
+    void begin();
 };
 
-SensorToDigital::SensorToDigital(RadioData& newRadioData, Adafruit_BNO055* newBno, TinyGPSPlus* newGps):RadioClass(newRadioData)
+void SensorToDigital::initGps()
 {
-    bno = newBno;
-    gps = newGps;
+    Serial2.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
+    delay(200);
+
+    Serial.println("=== ATGM336H GPS + TinyGPS++ ===");
+    Serial.printf("GPS UART3: RX=%d, TX=%d, Baud=%d\n", PIN_GPS_RX, PIN_GPS_TX, GPS_BAUD);
+
+    // TinyGPS++ PMTK-Konfig (optional)
+    Serial2.println("$PMTK220,1000*1F");  // 1Hz
+    Serial2.println("$PMTK314,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28");  // GGA+RMC
+    Serial.println("✓ GPS konfiguriert (TinyGPS++ ready)");
+}
+
+void SensorToDigital::initBNO055()
+{
+if (!I2CBNO.begin(PIN_MOTION_SENSOR_SDA, PIN_MOTION_SENSOR_SCL)) {
+    Serial.println("❌ I2C-Bus Fehler BNO055!");
+    while (1) { digitalWrite(LED_BUILTIN, millis() % 200 < 100); delay(50); }
+    }
+
+    if (!bno.begin()) {
+    Serial.println("❌ Kein BNO055 gefunden!");
+    while (1) { digitalWrite(LED_BUILTIN, millis() % 200 < 100); delay(50); }
+    }
+
+    Serial.println("✅ BNO055 gefunden & initialisiert");
+
+    // Fixed Kalibrierung (Ihre Werte)
+    adafruit_bno055_offsets_t fixedCalib = {
+    0, 4, -8,     // Accel X,Y,Z
+    29, 366, 245, // Mag X,Y,Z  
+    0, -3, -1,    // Gyro X,Y,Z
+    1000, 602     // Accel/Mag Radius
+    };
+
+    bno.setExtCrystalUse(true);
+    bno.setSensorOffsets(fixedCalib);
+    bno.setMode(OPERATION_MODE_NDOF);
+
+    Serial.println("✅ BNO055 Kalibrierung geladen");
+
+    // Initial Status
+    uint8_t sys, gyro, accel, mag;
+    bno.getCalibration(&sys, &gyro, &accel, &mag);
+    Serial.printf("Initial Kalib: SYS:%d G:%d A:%d M:%d\n", sys, gyro, accel, mag);
+}
+
+void SensorToDigital::begin()
+{
+    initBNO055();
+    // initGps();
 }
 
 void SensorToDigital::doFunction()
@@ -32,7 +95,7 @@ void SensorToDigital::doFunction()
     // TODO: GPS Daten verarbeiten
 
     // RAW Einlesen
-    imu::Vector<3> gravity = bno->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+    imu::Vector<3> gravity = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
     radioData.rawData.gravityX = gravity.x();
     radioData.rawData.gravityY = gravity.y();
     radioData.rawData.gravityZ = gravity.z();
@@ -52,7 +115,7 @@ void SensorToDigital::doFunction()
         radioData.analogData.roll = 0;
         radioData.digitalData.pitch = 0;
         radioData.digitalData.roll = 0;
-        Serial.println("Fehler: Pitch oder Roll ist NaN!");
+        // Serial.println("Fehler: Pitch oder Roll ist NaN!");
         return;
     }
 }

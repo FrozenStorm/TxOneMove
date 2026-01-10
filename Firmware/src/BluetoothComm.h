@@ -82,15 +82,15 @@ void BluetoothComm::doFunction(TickType_t lastWakeTime)
     // Telemetrie-Daten (GPS, Lage, etc.) - Placeholder
     doc["gps_lat"] = 46.8;
     doc["gps_lon"] = 7.8;
-    doc["pitch"] = 5.0;
-    doc["roll"] = -2.0;
+    doc["pitch"] = radioData.analogData.pitch;
+    doc["roll"] = radioData.analogData.roll;
     doc["heading"] = 90.0;
 
     // RadioData serialisieren
     serializeRadioData(doc);
 
     // JSON senden
-    char buffer[1024];
+    char buffer[512];
     serializeJson(doc, buffer);
     pTxChar->setValue(buffer);
     pTxChar->notify();
