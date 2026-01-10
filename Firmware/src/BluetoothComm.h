@@ -3,6 +3,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <ArduinoJson.h>
 
 #define SERVICE_UUID        "12345678-1234-5678-1234-56789abcdef0"
 #define CHARACTERISTIC_TX   "12345678-1234-5678-1234-56789abcdef1"
@@ -29,6 +30,8 @@ class ServerCallback : public BLEServerCallbacks {
 };
 
 class BluetoothComm : public RadioClass{
+private:
+    void serializeRadioData(JsonDocument& doc);
 public:
     BluetoothComm(RadioData& newRadioData): RadioClass(newRadioData){}
     void begin(void);
@@ -63,11 +66,32 @@ void BluetoothComm::begin()
     pServer->getAdvertising()->start();
 }
 
+void BluetoothComm::serializeRadioData(JsonDocument& doc) {
+        // Dynamisch alle RadioData-Felder serialisieren
+        doc["longPressDurationMs"] = radioData.analogToDigitalData.longPressDurationMs;
+        doc["throttleLimit_min"] = radioData.analogToDigitalData.throttleLimit.min;
+        doc["throttleLimit_max"] = radioData.analogToDigitalData.throttleLimit.max;
+        // Neue Felder: einfach eine Zeile hinzufügen!
+    }
+
 void BluetoothComm::doFunction(TickType_t lastWakeTime)
 {
     if(!deviceConnected) return;
-    char response[30];
-    sprintf(response, "Millis: %lu", millis() - lastWakeTime);
-    pTxChar->setValue((uint8_t*)response, strlen(response));
+    JsonDocument doc;
+        
+    // Telemetrie-Daten (GPS, Lage, etc.) - Placeholder
+    doc["gps_lat"] = 46.8;
+    doc["gps_lon"] = 7.8;
+    doc["pitch"] = 5.0;
+    doc["roll"] = -2.0;
+    doc["heading"] = 90.0;
+
+    // RadioData serialisieren
+    serializeRadioData(doc);
+
+    // JSON senden
+    char buffer[1024];
+    serializeJson(doc, buffer);
+    pTxChar->setValue(buffer);
     pTxChar->notify();
 }
