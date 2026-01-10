@@ -44,7 +44,7 @@ public:
 void BluetoothComm::begin()
 {
     BLEDevice::init("TxOneMove");
-    // BLEDevice::setMTU(517);
+    BLEDevice::setMTU(300);
         
     BLEServer* pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallback());
@@ -81,19 +81,19 @@ void BluetoothComm::doFunction(TickType_t lastWakeTime)
     JsonDocument doc;
         
     // Telemetrie-Daten (GPS, Lage, etc.) - Placeholder
-    // doc["txVolt"] = radioData.analogData.battery;
-    // doc["rxVolt"] = radioData.transmitterData.receiverBatteryVoltage;
-    doc["txLat"] = 46.8;
-    doc["txLon"] = 7.8;
-    // doc["txPitch"] = radioData.analogData.pitch;
-    // doc["txRoll"] = radioData.analogData.roll;
-    // doc["txHeading"] = 90.0;
+    doc["gps_lat"] = 46.8;
+    doc["gps_lon"] = 7.8;
+    doc["pitch"] = radioData.analogData.pitch;
+    doc["roll"] = radioData.analogData.roll;
+    doc["heading"] = 90.0;
+    doc["tx_voltage"] = radioData.analogData.battery;
+    doc["rx_voltage"] = radioData.transmitterData.receiverBatteryVoltage;
 
     // RadioData serialisieren
     serializeRadioData(doc);
 
     // JSON senden
-    char buffer[128];
+    char buffer[256];
     serializeJson(doc, buffer);
     pTxChar->setValue(buffer);
     pTxChar->notify();
