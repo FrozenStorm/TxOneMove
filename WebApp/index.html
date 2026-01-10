@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RC Telemetrie</title>
+    <title>TxOneMove</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -239,24 +239,32 @@
             <h2>📊 Telemetrie</h2>
             <div class="telemetry-grid" id="telemetryGrid">
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Breitengrad</div>
-                    <div class="telemetry-value" id="telem-lat">--</div>
+                    <div class="telemetry-label">TX Spannung</div>
+                    <div class="telemetry-value" id="telem-txVolt">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Längengrad</div>
-                    <div class="telemetry-value" id="telem-lon">--</div>
+                    <div class="telemetry-label">RX Spannung</div>
+                    <div class="telemetry-value" id="telem-rxVolt">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Pitch (°)</div>
-                    <div class="telemetry-value" id="telem-pitch">--</div>
+                    <div class="telemetry-label">TX Breitengrad</div>
+                    <div class="telemetry-value" id="telem-txLat">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Roll (°)</div>
-                    <div class="telemetry-value" id="telem-roll">--</div>
+                    <div class="telemetry-label">TX Längengrad</div>
+                    <div class="telemetry-value" id="telem-txLon">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Heading (°)</div>
-                    <div class="telemetry-value" id="telem-heading">--</div>
+                    <div class="telemetry-label">TX Pitch (°)</div>
+                    <div class="telemetry-value" id="telem-txPitch">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">TX Roll (°)</div>
+                    <div class="telemetry-value" id="telem-txRoll">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">TX Heading (°)</div>
+                    <div class="telemetry-value" id="telem-txHeading">--</div>
                 </div>
             </div>
         </div>
@@ -297,11 +305,11 @@
         let map = null;
         let marker = null;
         let currentData = {
-            gps_lat: 46.8,
-            gps_lon: 7.8,
-            pitch: 0,
-            roll: 0,
-            heading: 0,
+            txLat: 46.8,
+            txLon: 7.8,
+            txPitch: 0,
+            txRoll: 0,
+            txHeading: 0,
             longPressDurationMs: 0,
             throttleLimit_min: 0,
             throttleLimit_max: 100
@@ -367,14 +375,14 @@
             Object.assign(currentData, data);
 
             // Karte updaten
-            map.setView([data.gps_lat || 46.8, data.gps_lon || 7.8], 16);
-            marker.setLatLng([data.gps_lat || 46.8, data.gps_lon || 7.8]);
+            map.setView([data.txLat || 46.8, data.txLon || 7.8], 16);
+            marker.setLatLng([data.txLat || 46.8, data.txLon || 7.8]);
 
             // Heading-Pfeil drehen
-            // if (data.heading !== undefined) {
-            //     marker.setRotationAngle(data.heading);
+            // if (data.txHeading !== undefined) {
+            //     marker.setRotationAngle(data.txHeading);
             //     document.getElementById('headingArrow').style.transform = 
-            //         `translateX(-50%) rotate(${data.heading}deg)`;
+            //         `translateX(-50%) rotate(${data.txHeading}deg)`;
             // }
 
             // Horizont (Pitch + Roll)
@@ -384,11 +392,13 @@
                 `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
 
             // Telemetrie-Anzeige
-            updateTelemDisplay('lat', data.gps_lat, '°');
-            updateTelemDisplay('lon', data.gps_lon, '°');
-            updateTelemDisplay('pitch', data.pitch, '°');
-            updateTelemDisplay('roll', data.roll, '°');
-            updateTelemDisplay('heading', data.heading, '°');
+            updateTelemDisplay('txLat', data.txLat, '°');
+            updateTelemDisplay('txLon', data.txLon, '°');
+            updateTelemDisplay('txPitch', data.txPitch, '°');
+            updateTelemDisplay('txRoll', data.txRoll, '°');
+            updateTelemDisplay('txHeading', data.txHeading, '°');
+            updateTelemDisplay('txVolt', data.txVolt, 'V');
+            updateTelemDisplay('rxVolt', data.rxVolt, 'V');
 
             // Parameter aus Daten
             updateParameterDisplay(data);

@@ -35,7 +35,7 @@ SensorToDigital                   sensorToDigital = SensorToDigital(radioData);
 BluetoothComm                     bluetoothComm = BluetoothComm(radioData);
 /* -------------------- Functions Prototypes -------------------------------------------------------------------*/
 void myMainTask(void *pvParameters);
-void mySerialTask(void *pvParameters);
+void myCommTask(void *pvParameters);
 
 /* -------------------- Setup ----------------------------------------------------------------------------------*/
 void setup() {
@@ -57,29 +57,15 @@ void setup() {
   Serial.println("Model loaded");
   
   sensorToDigital.begin();
+  bluetoothComm.begin();
+
+  Serial.println("Init done");
 
   // Create Tasks
   xTaskCreatePinnedToCore(myMainTask, "MainTask", 20000, NULL, 2, NULL, 1);
-  xTaskCreatePinnedToCore(mySerialTask, "SerialTask", 10000, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(myCommTask, "CommTask", 20000, NULL, 1, NULL, 1);  
 
-  bluetoothComm.begin();
-  
-  Serial.println("Init done");
-}
-
-void printMemoryInfo() {
-    Serial.println("=== Memory Info ===");
-    Serial.print("Free Heap: ");
-    Serial.print(ESP.getFreeHeap());
-    Serial.println(" Bytes");
-    
-    Serial.print("Stack High Water Mark (Core 0): ");
-    Serial.print(uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandleForCPU(0)));
-    Serial.println(" Bytes");
-    
-    Serial.print("Stack High Water Mark (Core 1): ");
-    Serial.print(uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandleForCPU(1)));
-    Serial.println(" Bytes");
+  Serial.println("All Tasks Created");
 }
 
 /* -------------------- Main -----------------------------------------------------------------------------------*/
@@ -106,16 +92,14 @@ void myMainTask(void *pvParameters) {
   }
 }
 
-void mySerialTask(void *pvParameters) {
+void myCommTask(void *pvParameters) {
   const TickType_t loopDelay = 500 / portTICK_PERIOD_MS;
   TickType_t lastWakeTime = xTaskGetTickCount();
-  Serial.println("Serial Task Started");
+  Serial.println("Comm Task Started");
   for (;;) {
     xTaskDelayUntil(&lastWakeTime, loopDelay);
-
-    // Serial.println("-----------------------------------------------");
-    // Serial.print("AP IP-Adresse = ");Serial.println(WiFi.softAPIP());
-    // Serial.printf("Freier Heap = %u Bytes\n", ESP.getFreeHeap());
+    
+    // yield();
 
     Serial.println("**** DigitalData ****");
     // Serial.print("radioData.digitalData.stickLeftRight = "); Serial.println(radioData.digitalData.stickLeftRight);
@@ -219,11 +203,14 @@ void mySerialTask(void *pvParameters) {
     // Serial.println("**** ModelData ****");
     // Serial.print("radioData.modelData.modelName = "); Serial.println(radioData.getModelName());
 
+    // yield();
+
     // Serial.println("**** FreeRTOS ****");
     // Serial.printf("Free Heap: %u\n", ESP.getFreeHeap());
     // Serial.printf("Min Free Heap: %u\n", ESP.getMinFreeHeap());
     // Serial.printf("Max Alloc Heap: %u\n", ESP.getMaxAllocHeap());
-    // Serial.printf("Free Stack: %u\n", uxTaskGetStackHighWaterMark(NULL));
+    // Serial.printf("Stack High Water Mark (Core 0): %u\n", uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandleForCPU(0)));
+    // Serial.printf("Stack High Water Mark (Core 1): %u\n", uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandleForCPU(1)));
     // Serial.printf("Task Count: %u\n", uxTaskGetNumberOfTasks());
     // Serial.printf("🔁 Reset-Grund: %d\n", esp_reset_reason());
     // Serial.printf("APB Clock: %u Hz\n", esp_clk_apb_freq());    // UART hängt an APB Clock
