@@ -13,7 +13,7 @@
 #include "Model.hpp"
 #include "DualRate.hpp"
 #include "SensorToDigital.hpp"
-#include "BluetoothComm.h"
+#include "BluetoothComm.hpp"
 
 
 /* -------------------- Defines --------------------------------------------------------------------------------*/
