@@ -129,6 +129,12 @@ public:
         float temperature = 0;
 
         Orientation orientation = UNKNOWN;
+
+        double gpsLatitude = 0;
+        double gpsLongitude = 0;
+        double gpsSpeedKmph = 0;
+        double gpsAltitudeMeters = 0;
+        int    gpsSatellites = 0;
     };
     DigitalData digitalData;
 

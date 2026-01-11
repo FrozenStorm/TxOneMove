@@ -93,17 +93,23 @@ void SensorToDigital::begin()
 void SensorToDigital::doFunction()
 {
     // TODO: GPS Daten verarbeiten
-    while (Serial2.available() > 0) {
+    while(Serial2.available() > 0)
+    {
         char read = Serial2.read();
         // Serial.write(read);  // Optional: Rohdaten ausgeben
         if (gps.encode(read)) {
         // Neue GPS-Daten verfügbar!
         if (gps.location.isValid()) {
-            Serial.printf("GPS/TinyGPS: %.6f, %.6f | Speed: %.1f km/h | Alt: %.1f m\n",
-                        gps.location.lat(), gps.location.lng(),
-                        gps.speed.kmph(), gps.altitude.meters());
-            Serial.printf("GPS/Sats: %d | HDOP: %.1f | FixAge: %lu\n", 
-                        gps.satellites.value(), gps.hdop.hdop(), gps.location.age());
+            radioData.digitalData.gpsLatitude = gps.location.lat();
+            radioData.digitalData.gpsLongitude = gps.location.lng();
+            radioData.digitalData.gpsSpeedKmph = gps.speed.kmph();
+            radioData.digitalData.gpsAltitudeMeters = gps.altitude.meters();
+            radioData.digitalData.gpsSatellites = gps.satellites.value();
+            // Serial.printf("GPS/TinyGPS: %.6f, %.6f | Speed: %.1f km/h | Alt: %.1f m\n",
+            //             gps.location.lat(), gps.location.lng(),
+            //             gps.speed.kmph(), gps.altitude.meters());
+            // Serial.printf("GPS/Sats: %d | HDOP: %.1f | FixAge: %lu\n", 
+            //             gps.satellites.value(), gps.hdop.hdop(), gps.location.age());
         }
         }
     }

@@ -32,21 +32,25 @@ class ServerCallback : public BLEServerCallbacks {
 class BluetoothComm : public RadioClass{
 private:
     JsonDocument doc;
-    char buffer[512];
-    void serializeRadioData(JsonDocument& doc);
+    char buffer[512] = R"({
+  "gps_lat": 47.4241,
+  "gps_lon": 7.6895,
+  "pitch": 0.0,
+  "roll": 0.0,
+  "heading": 90.0,
+  "tx_voltage": 4.20,
+  "rx_voltage": 3.80
+})";
 public:
     BluetoothComm(RadioData& newRadioData): RadioClass(newRadioData){}
     void begin(void);
-    void doFunction() override{
-        // Not used
-    };
-    void doFunction(TickType_t lastWakeTime);    
+    void doFunction();
 };
 
 void BluetoothComm::begin()
 {
     BLEDevice::init("TxOneMove");
-    BLEDevice::setMTU(300);
+    BLEDevice::setMTU(200);
         
     BLEServer* pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallback());
@@ -69,32 +73,25 @@ void BluetoothComm::begin()
     pServer->getAdvertising()->start();
 }
 
-void BluetoothComm::serializeRadioData(JsonDocument& doc) {
-        // Dynamisch alle RadioData-Felder serialisieren
-        doc["longPressDurationMs"] = radioData.analogToDigitalData.longPressDurationMs;
-        doc["throttleLimit_min"] = radioData.analogToDigitalData.throttleLimit.min;
-        doc["throttleLimit_max"] = radioData.analogToDigitalData.throttleLimit.max;
-        // Neue Felder: einfach eine Zeile hinzufügen!
-    }
-
-void BluetoothComm::doFunction(TickType_t lastWakeTime)
+void BluetoothComm::doFunction()
 {
+    static unsigned long lastUpdate = 0;
     if(!deviceConnected) return;
 
-    // Telemetrie-Daten (GPS, Lage, etc.) - Placeholder
-    doc["gps_lat"] = 46.8;
-    doc["gps_lon"] = 7.8;
+    if(millis() - lastUpdate < 100) return;
+    lastUpdate = millis();
+
+    doc["gps_lat"] = radioData.digitalData.gpsLatitude;
+    doc["gps_lon"] = radioData.digitalData.gpsLongitude;
     doc["pitch"] = radioData.analogData.pitch;
     doc["roll"] = radioData.analogData.roll;
     doc["heading"] = 90.0;
     doc["tx_voltage"] = radioData.analogData.battery;
     doc["rx_voltage"] = radioData.transmitterData.receiverBatteryVoltage;
 
-    // RadioData serialisieren
-    serializeRadioData(doc);
-
     // JSON senden
     serializeJson(doc, buffer);
+    // Serial.println(buffer);
     pTxChar->setValue(buffer);
     pTxChar->notify();
 }
