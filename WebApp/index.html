@@ -240,11 +240,11 @@
             <div class="telemetry-grid" id="telemetryGrid">
                 <div class="telemetry-item">
                     <div class="telemetry-label">Tx Spannung</div>
-                    <div class="telemetry-value" id="telem-txvoltage">--</div>
+                    <div class="telemetry-value" id="telem-tx_voltage">--</div>
                 </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Rx Spannung</div>
-                    <div class="telemetry-value" id="telem-rxvoltage">--</div>
+                    <div class="telemetry-value" id="telem-rx_voltage">--</div>
                 </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Breitengrad</div>
@@ -255,16 +255,20 @@
                     <div class="telemetry-value" id="telem-lon">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Pitch (°)</div>
+                    <div class="telemetry-label">Pitch</div>
                     <div class="telemetry-value" id="telem-pitch">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Roll (°)</div>
+                    <div class="telemetry-label">Roll</div>
                     <div class="telemetry-value" id="telem-roll">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Heading (°)</div>
+                    <div class="telemetry-label">Heading</div>
                     <div class="telemetry-value" id="telem-heading">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Throttle</div>
+                    <div class="telemetry-value" id="telem-throttle_voltage">--</div>
                 </div>
             </div>
         </div>
@@ -394,23 +398,24 @@
                 `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
 
             // Telemetrie-Anzeige
-            updateTelemDisplay('lat', data.gps_lat, '°');
-            updateTelemDisplay('lon', data.gps_lon, '°');
-            updateTelemDisplay('pitch', data.pitch, '°');
-            updateTelemDisplay('roll', data.roll, '°');
-            updateTelemDisplay('heading', data.heading, '°');
-            updateTelemDisplay('txvoltage', data.tx_voltage, 'V');
-            updateTelemDisplay('rxvoltage', data.rx_voltage, 'V');
+            updateTelemDisplay('lat', data.gps_lat, 6, '°');
+            updateTelemDisplay('lon', data.gps_lon, 6, '°');
+            updateTelemDisplay('pitch', data.pitch, 1, '°');
+            updateTelemDisplay('roll', data.roll, 1, '°');
+            updateTelemDisplay('heading', data.heading, 1, '°');
+            updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
+            updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
+            updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
 
             // Parameter aus Daten
             updateParameterDisplay(data);
         }
 
-        function updateTelemDisplay(key, value, unit = '') {
+        function updateTelemDisplay(key, value, decimal, unit = '') {
             const elem = document.getElementById('telem-' + key);
             if (elem) {
                 elem.textContent = (typeof value === 'number') ? 
-                    value.toFixed(2) + unit : '--';
+                    value.toFixed(decimal) + unit : '--';
             }
         }
 
@@ -427,9 +432,14 @@
             container.innerHTML = '';
 
             const fields = [
-                { key: 'longPressDurationMs', label: 'Long Press Duration (ms)', type: 'number', min: 0, max: 5000 },
-                { key: 'throttleLimit_min', label: 'Throttle Min (%)', type: 'range', min: 0, max: 100 },
-                { key: 'throttleLimit_max', label: 'Throttle Max (%)', type: 'range', min: 0, max: 100 }
+                { key: 'ddr_pitch', label: 'D/R Pitch [%]', type: 'range', min: 0, max: 100 },
+                { key: 'ddr_roll', label: 'D/R Roll [%]', type: 'range', min: 0, max: 100 },
+                { key: 'expo_pitch', label: 'Expo Pitch [%]', type: 'range', min: 0, max: 100 },
+                { key: 'expo_roll', label: 'Expo Roll [%]', type: 'range', min: 0, max: 100 },
+                { key: 'expo_throttle', label: 'Expo Throttle [%]', type: 'range', min: 0, max: 100 },
+                { key: 'throttle_to_pitch', label: 'Throttle -> Pitch [%]', type: 'range', min: 0, max: 100 },
+                { key: 'throttle_max', label: 'Throttle max [V]', type: 'number', min: 0, max: 3.3 },
+                { key: 'throttle_min', label: 'Throttle min [V]', type: 'number', min: 0, max: 3.3 }
             ];
 
             fields.forEach(field => {

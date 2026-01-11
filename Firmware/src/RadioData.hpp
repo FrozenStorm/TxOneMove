@@ -222,6 +222,9 @@ void RadioData::storeGlobalData()
     pref.putFloat("atdd.tl.min", analogToDigitalData.throttleLimit.min);
     pref.putFloat("atdd.tl.max", analogToDigitalData.throttleLimit.max);
 
+    pref.putFloat("stdd.alp.d", sensorToDigitalData.angleLimitPitch.delta);
+    pref.putFloat("stdd.alr.d", sensorToDigitalData.angleLimitRoll.delta);
+
     Serial.printf("Global entries left = %u\n", pref.freeEntries());
     pref.end();
 }
@@ -236,11 +239,6 @@ void RadioData::storeModelData()
         Serial.printf("storeModelData %s begin error", name);
         return;
     }
-
-    pref.putFloat("atdd.alp.d", sensorToDigitalData.angleLimitPitch.delta);
-    pref.putFloat("atdd.alp.c", sensorToDigitalData.angleLimitPitch.center);
-    pref.putFloat("atdd.alr.d", sensorToDigitalData.angleLimitRoll.delta);
-    pref.putFloat("atdd.alr.c", sensorToDigitalData.angleLimitRoll.center);
     
     pref.putFloat("ed.rol", expoData.roll);
     pref.putFloat("ed.pit", expoData.pitch);
@@ -303,6 +301,9 @@ void RadioData::loadGlobalData()
     analogToDigitalData.longPressDurationMs = pref.getInt("atdd.lpdm", 600);
     analogToDigitalData.throttleLimit.min = pref.getFloat("atdd.tl.min", 1.8);
     analogToDigitalData.throttleLimit.max = pref.getFloat("atdd.tl.max", 2.3);
+
+    sensorToDigitalData.angleLimitPitch.delta = pref.getInt("stdd.alp.d",45);
+    sensorToDigitalData.angleLimitRoll.delta = pref.getInt("stdd.alr.d",45);
     pref.end();
 }
 
@@ -341,11 +342,6 @@ void RadioData::loadModelData()
         return;
     }
     analogToDigitalData.longPressDurationMs = pref.getInt("atdd.lpdm", 600);
-
-    sensorToDigitalData.angleLimitPitch.delta = pref.getInt("atdd.alp.d",45);
-    sensorToDigitalData.angleLimitPitch.center = pref.getInt("atdd.alp.c",0);
-    sensorToDigitalData.angleLimitRoll.delta = pref.getInt("atdd.alr.d",45);
-    sensorToDigitalData.angleLimitRoll.center = pref.getInt("atdd.alr.c",0);
     
     expoData.roll = pref.getFloat("ed.rol", 0.3);
     expoData.pitch = pref.getFloat("ed.pit", 0.3);

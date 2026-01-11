@@ -101,18 +101,12 @@ void myMainTask() {
     
     loopCount++;
     if (loopCount >= 10) {  // Alle 2s (100*20ms) Stats drucken
-      // UBaseType_t stackUsed = (prevStack - uxTaskGetStackHighWaterMark(NULL)) * 4;  // Bytes approx.
-      // size_t heapUsed = prevHeap - ESP.getFreeHeap();
       
-      Serial.printf("loopTime/loopAvg[us]: %lu\n", totalLoopTime / loopCount);
-      // Serial.printf("stackPeak/value[B]: %u\n", stackUsed);
-      // Serial.printf("heapUsed/value[B]: %u\n", heapUsed);
-      // Serial.printf("heapFree/value[B]: %u\n", ESP.getFreeHeap());
-      // Serial.printf("heapHighWaterMark/value[B]: %u\n", uxTaskGetStackHighWaterMark(NULL) * 4);
+      // Serial.printf("loopTime/loopAvg[us]: %lu\n", totalLoopTime / loopCount);
       // Serial.printf("loopTime/analogToDigital[us]: %lu\n", t1);
       // Serial.printf("loopTime/sensorToDigital[us]: %lu\n", t2);
       // Serial.printf("loopTime/digitalToFunction[us]: %lu\n", t3);
-      Serial.printf("loopTime/expo[us]: %lu\n", t4);
+      // Serial.printf("loopTime/expo[us]: %lu\n", t4);
       // Serial.printf("loopTime/trim[us]: %lu\n", t5);
       // Serial.printf("loopTime/dualRate[us]: %lu\n", t6);
       // Serial.printf("loopTime/mixer[us]: %lu\n", t7);
@@ -122,8 +116,6 @@ void myMainTask() {
       // Serial.flush();
       
       totalLoopTime = 0; loopCount = 0;
-      // prevStack = uxTaskGetStackHighWaterMark(NULL);
-      // prevHeap = ESP.getFreeHeap();
     }
   }
 }

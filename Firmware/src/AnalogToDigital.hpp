@@ -56,7 +56,7 @@ void AnalogToDigital::doFunction()
     radioData.rawData.throttle = radioData.rawData.throttle / 20;
     
 
-    radioData.analogData.battery = 2 * esp_adc_cal_raw_to_voltage(radioData.rawData.battery, &adc_chars)/1000.0;
+    radioData.analogData.battery = 2 * esp_adc_cal_raw_to_voltage(radioData.rawData.battery, &adc_chars)/1000.0 + 0.25; // Korrektur aufgrund Spannungsabfall in Leitung
     radioData.analogData.throttle = esp_adc_cal_raw_to_voltage(radioData.rawData.throttle, &adc_chars)/1000.0;
 
     radioData.digitalData.throttle = throttleToDigital(radioData.analogData.throttle, radioData.analogToDigitalData.throttleLimit);

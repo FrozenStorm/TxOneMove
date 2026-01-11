@@ -98,19 +98,24 @@ void SensorToDigital::doFunction()
         char read = Serial2.read();
         // Serial.write(read);  // Optional: Rohdaten ausgeben
         if (gps.encode(read)) {
-        // Neue GPS-Daten verfügbar!
-        if (gps.location.isValid()) {
-            radioData.digitalData.gpsLatitude = gps.location.lat();
-            radioData.digitalData.gpsLongitude = gps.location.lng();
-            radioData.digitalData.gpsSpeedKmph = gps.speed.kmph();
-            radioData.digitalData.gpsAltitudeMeters = gps.altitude.meters();
-            radioData.digitalData.gpsSatellites = gps.satellites.value();
-            // Serial.printf("GPS/TinyGPS: %.6f, %.6f | Speed: %.1f km/h | Alt: %.1f m\n",
-            //             gps.location.lat(), gps.location.lng(),
-            //             gps.speed.kmph(), gps.altitude.meters());
-            // Serial.printf("GPS/Sats: %d | HDOP: %.1f | FixAge: %lu\n", 
-            //             gps.satellites.value(), gps.hdop.hdop(), gps.location.age());
-        }
+            // Neue GPS-Daten verfügbar!
+            if (gps.location.isValid()) {
+                radioData.digitalData.gpsLatitude = gps.location.lat();
+                radioData.digitalData.gpsLongitude = gps.location.lng();
+                radioData.digitalData.gpsSpeedKmph = gps.speed.kmph();
+                radioData.digitalData.gpsAltitudeMeters = gps.altitude.meters();
+                radioData.digitalData.gpsSatellites = gps.satellites.value();
+                // Serial.write('\n');
+                Serial.printf("GPS/TinyGPS: %.6f, %.6f | Speed: %.1f km/h | Alt: %.1f m\n",
+                            gps.location.lat(), gps.location.lng(),
+                            gps.speed.kmph(), gps.altitude.meters());
+                Serial.printf("GPS/Sats: %d | HDOP: %.1f | FixAge: %lu\n", 
+                            gps.satellites.value(), gps.hdop.hdop(), gps.location.age());
+            }
+            // else
+            // {
+            //     Serial.write('\n');
+            // }
         }
     }
 
