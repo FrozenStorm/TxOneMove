@@ -31,6 +31,8 @@ class ServerCallback : public BLEServerCallbacks {
 
 class BluetoothComm : public RadioClass{
 private:
+    JsonDocument doc;
+    char buffer[512];
     void serializeRadioData(JsonDocument& doc);
 public:
     BluetoothComm(RadioData& newRadioData): RadioClass(newRadioData){}
@@ -78,8 +80,7 @@ void BluetoothComm::serializeRadioData(JsonDocument& doc) {
 void BluetoothComm::doFunction(TickType_t lastWakeTime)
 {
     if(!deviceConnected) return;
-    JsonDocument doc;
-        
+
     // Telemetrie-Daten (GPS, Lage, etc.) - Placeholder
     doc["gps_lat"] = 46.8;
     doc["gps_lon"] = 7.8;
@@ -93,7 +94,6 @@ void BluetoothComm::doFunction(TickType_t lastWakeTime)
     serializeRadioData(doc);
 
     // JSON senden
-    char buffer[256];
     serializeJson(doc, buffer);
     pTxChar->setValue(buffer);
     pTxChar->notify();

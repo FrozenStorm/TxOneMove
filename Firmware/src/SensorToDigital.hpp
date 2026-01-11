@@ -38,15 +38,15 @@ public:
 
 void SensorToDigital::initGps()
 {
-    Serial2.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
+    Serial1.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
     delay(200);
 
     Serial.println("=== ATGM336H GPS + TinyGPS++ ===");
     Serial.printf("GPS UART3: RX=%d, TX=%d, Baud=%d\n", PIN_GPS_RX, PIN_GPS_TX, GPS_BAUD);
 
     // TinyGPS++ PMTK-Konfig (optional)
-    Serial2.println("$PMTK220,1000*1F");  // 1Hz
-    Serial2.println("$PMTK314,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28");  // GGA+RMC
+    Serial1.println("$PMTK220,1000*1F");  // 1Hz
+    Serial1.println("$PMTK314,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28");  // GGA+RMC
     Serial.println("✓ GPS konfiguriert (TinyGPS++ ready)");
 }
 
@@ -87,7 +87,7 @@ if (!I2CBNO.begin(PIN_MOTION_SENSOR_SDA, PIN_MOTION_SENSOR_SCL)) {
 void SensorToDigital::begin()
 {
     initBNO055();
-    // initGps();
+    initGps();
 }
 
 void SensorToDigital::doFunction()

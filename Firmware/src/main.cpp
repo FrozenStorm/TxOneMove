@@ -34,8 +34,8 @@ Model                             model = Model(radioData);
 SensorToDigital                   sensorToDigital = SensorToDigital(radioData);
 BluetoothComm                     bluetoothComm = BluetoothComm(radioData);
 /* -------------------- Functions Prototypes -------------------------------------------------------------------*/
-void myMainTask(void *pvParameters);
-void mySerialTask(void *pvParameters);
+void myMainTask();
+void mySerialTask();
 
 /* -------------------- Setup ----------------------------------------------------------------------------------*/
 void setup() {
@@ -57,10 +57,6 @@ void setup() {
   Serial.println("Model loaded");
   
   sensorToDigital.begin();
-
-  // Create Tasks
-  xTaskCreatePinnedToCore(myMainTask, "MainTask", 20000, NULL, 2, NULL, 1);
-  xTaskCreatePinnedToCore(mySerialTask, "SerialTask", 10000, NULL, 1, NULL, 1);
 
   bluetoothComm.begin();
   
@@ -84,35 +80,72 @@ void printMemoryInfo() {
 
 /* -------------------- Main -----------------------------------------------------------------------------------*/
 void loop() { // Core 1
+  myMainTask(); // FreeRTOS Task
+  // mySerialTask(); // FreeRTOS Task
 }
 
 /* -------------------- Task -----------------------------------------------------------------------------------*/
-void myMainTask(void *pvParameters) {
+void myMainTask() {
   const TickType_t loopDelay = 20 / portTICK_PERIOD_MS;
   TickType_t lastWakeTime = xTaskGetTickCount();
   Serial.println("Main Task Started");
+  
+  unsigned long totalLoopTime = 0;
+  int loopCount = 100;
+  UBaseType_t prevStack = uxTaskGetStackHighWaterMark(NULL);
+  size_t prevHeap = ESP.getFreeHeap();
+  
   for (;;) {
     xTaskDelayUntil(&lastWakeTime, loopDelay);
-    analogToDigital.doFunction(); // 3ms
-    sensorToDigital.doFunction(); // 4ms
-    digitalToFunction.doFunction(); // <<1ms
-    expo.doFunction(); // <<1ms
-    trim.doFunction(); // <<1ms
-    dualRate.doFunction(); // <<1ms
-    mixer.doFunction(); // <<1ms
-    functionToChannel.doFunction(); // <<1ms
-    transmitter.doFunction(); // <<1ms
     
+    unsigned long loopStart = micros();
+    
+    unsigned long t1_start = micros(); analogToDigital.doFunction(); unsigned long t1 = micros() - t1_start;
+    unsigned long t2_start = micros(); sensorToDigital.doFunction(); unsigned long t2 = micros() - t2_start;
+    unsigned long t3_start = micros(); digitalToFunction.doFunction(); unsigned long t3 = micros() - t3_start;
+    unsigned long t4_start = micros(); expo.doFunction(); unsigned long t4 = micros() - t4_start;
+    unsigned long t5_start = micros(); trim.doFunction(); unsigned long t5 = micros() - t5_start;
+    unsigned long t6_start = micros(); dualRate.doFunction(); unsigned long t6 = micros() - t6_start;
+    unsigned long t7_start = micros(); mixer.doFunction(); unsigned long t7 = micros() - t7_start;
+    unsigned long t8_start = micros(); functionToChannel.doFunction(); unsigned long t8 = micros() - t8_start;
+    unsigned long t9_start = micros(); transmitter.doFunction(); unsigned long t9 = micros() - t9_start;
+    unsigned long t10_start = micros(); bluetoothComm.doFunction(lastWakeTime); unsigned long t10 = micros() - t10_start;
+    
+    totalLoopTime += (micros() - loopStart);
+    
+    loopCount++;
+    if (loopCount >= 100) {  // Alle 2s (100*20ms) Stats drucken
+      UBaseType_t stackUsed = (prevStack - uxTaskGetStackHighWaterMark(NULL)) * 4;  // Bytes approx.
+      size_t heapUsed = prevHeap - ESP.getFreeHeap();
+      
+      Serial.printf("Loop Avg: %lu us | Stack Peak: %u B | High Water Mark %u B | Heap Delta: %u B | Free Heap: %u B\n", 
+                    totalLoopTime / 100, stackUsed, uxTaskGetStackHighWaterMark(NULL) * 4, heapUsed, ESP.getFreeHeap());
+      Serial.printf("analogToDigital: %lu us\n", t1);
+      Serial.printf("sensorToDigital: %lu us\n", t2);
+      Serial.printf("digitalToFunction: %lu us\n", t3);
+      Serial.printf("expo: %lu us\n", t4);
+      Serial.printf("trim: %lu us\n", t5);
+      Serial.printf("dualRate: %lu us\n", t6);
+      Serial.printf("mixer: %lu us\n", t7);
+      Serial.printf("functionToChannel: %lu us\n", t8);
+      Serial.printf("transmitter: %lu us\n", t9);
+      Serial.printf("bluetoothComm: %lu us\n", t10);
+      
+      totalLoopTime = 0; loopCount = 0;
+      prevStack = uxTaskGetStackHighWaterMark(NULL);
+      prevHeap = ESP.getFreeHeap();
+    }
   }
 }
 
-void mySerialTask(void *pvParameters) {
+
+void mySerialTask() {
   const TickType_t loopDelay = 500 / portTICK_PERIOD_MS;
   TickType_t lastWakeTime = xTaskGetTickCount();
   Serial.println("Serial Task Started");
   for (;;) {
     xTaskDelayUntil(&lastWakeTime, loopDelay);
-    bluetoothComm.doFunction(lastWakeTime); 
+    
     // Serial.println("-----------------------------------------------");
     // Serial.print("AP IP-Adresse = ");Serial.println(WiFi.softAPIP());
     // Serial.printf("Freier Heap = %u Bytes\n", ESP.getFreeHeap());
