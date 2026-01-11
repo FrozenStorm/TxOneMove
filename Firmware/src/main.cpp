@@ -40,7 +40,7 @@ void mySerialTask();
 /* -------------------- Setup ----------------------------------------------------------------------------------*/
 void setup() {
   Serial.begin(115200);
-  while (!Serial) delay(10);
+  // while (!Serial) delay(10); Nur für Debugging im USB-CDC Modus einkommentieren sonst startet das Board nicht ohne angeschlossenen Serial Monitor
 
   // Serial.setDebugOutput(true);
   // esp_log_level_set("*", ESP_LOG_VERBOSE);
