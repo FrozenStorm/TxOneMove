@@ -39,12 +39,12 @@ void mySerialTask();
 
 /* -------------------- Setup ----------------------------------------------------------------------------------*/
 void setup() {
-  // delay(5000);
   Serial.begin(115200);
+  while (!Serial) delay(10);
   Serial.println("Init started");
 
-  Serial.setDebugOutput(true);
-  esp_log_level_set("*", ESP_LOG_VERBOSE);
+  // Serial.setDebugOutput(true);
+  // esp_log_level_set("*", ESP_LOG_VERBOSE);
 
   // Factory Reset FLASH
   // radioData.resetData();
@@ -57,6 +57,7 @@ void setup() {
   Serial.println("Model loaded");
   
   sensorToDigital.begin();
+  transmitter.begin();
 
   bluetoothComm.begin();
   

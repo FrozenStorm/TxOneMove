@@ -45,11 +45,12 @@ private:
     bool sendTx(void);
     bool receiveRx(void);
 public:
-    Transmitter(RadioData& newRadioData);
+    Transmitter(RadioData& newRadioData): RadioClass(newRadioData) {}
+    void begin();
     void doFunction();
 };
 
-Transmitter::Transmitter(RadioData& newRadioData) : RadioClass(newRadioData)
+void Transmitter::begin()
 {
     Serial1.begin(400000, SERIAL_8N1, PIN_TX_MODULE_RTX, 37);
     pinMode(PIN_TX_MODULE_RTX, INPUT_PULLUP);

@@ -38,15 +38,15 @@ public:
 
 void SensorToDigital::initGps()
 {
-    Serial1.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
+    Serial2.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
     delay(200);
 
     Serial.println("=== ATGM336H GPS + TinyGPS++ ===");
     Serial.printf("GPS UART3: RX=%d, TX=%d, Baud=%d\n", PIN_GPS_RX, PIN_GPS_TX, GPS_BAUD);
 
     // TinyGPS++ PMTK-Konfig (optional)
-    Serial1.println("$PMTK220,1000*1F");  // 1Hz
-    Serial1.println("$PMTK314,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28");  // GGA+RMC
+    Serial2.println("$PMTK220,1000*1F");  // 1Hz
+    Serial2.println("$PMTK314,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28");  // GGA+RMC
     Serial.println("✓ GPS konfiguriert (TinyGPS++ ready)");
 }
 
@@ -93,6 +93,20 @@ void SensorToDigital::begin()
 void SensorToDigital::doFunction()
 {
     // TODO: GPS Daten verarbeiten
+    while (Serial2.available() > 0) {
+        char read = Serial2.read();
+        // Serial.write(read);  // Optional: Rohdaten ausgeben
+        if (gps.encode(read)) {
+        // Neue GPS-Daten verfügbar!
+        if (gps.location.isValid()) {
+            Serial.printf("GPS/TinyGPS: %.6f, %.6f | Speed: %.1f km/h | Alt: %.1f m\n",
+                        gps.location.lat(), gps.location.lng(),
+                        gps.speed.kmph(), gps.altitude.meters());
+            Serial.printf("GPS/Sats: %d | HDOP: %.1f | FixAge: %lu\n", 
+                        gps.satellites.value(), gps.hdop.hdop(), gps.location.age());
+        }
+        }
+    }
 
     // RAW Einlesen
     imu::Vector<3> gravity = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
