@@ -32,9 +32,17 @@ class RxCallback : public BLECharacteristicCallbacks {
                     radioData.storeGlobalData();
                     return;
                 }
+                if (cmd == "RESET_TRIM") {
+                    radioData.trimData.pitch = 0;
+                    radioData.trimData.roll = 0;
+                    radioData.storeTrimData();
+                    return;
+                }
             }
             
             // ============= SINGLE PARAMETER =============
+            if (doc.containsKey("trim_pitch")) radioData.trimData.pitch = doc["trim_pitch"].as<float>();
+            if (doc.containsKey("trim_roll")) radioData.trimData.roll = doc["trim_roll"].as<float>();
             if (doc.containsKey("ddr_pitch")) radioData.dualRateData.pitch = doc["ddr_pitch"].as<float>() / 100.0;
             if (doc.containsKey("ddr_roll")) radioData.dualRateData.roll = doc["ddr_roll"].as<float>() / 100.0;
             if (doc.containsKey("expo_pitch")) radioData.expoData.pitch = doc["expo_pitch"].as<float>() / 100.0;
@@ -98,18 +106,24 @@ void BluetoothComm::doFunction()
     static unsigned long lastUpdate = 0;
     if(!deviceConnected) return;
 
-    if(millis() - lastUpdate < 100) return;
+    if(millis() - lastUpdate < 50) return;
     lastUpdate = millis();
 
     // Telemetrie-Daten ins JSON-Dokument schreiben
+    doc["armed"] = radioData.functionData.armed ? 1 : 0;
     doc["gps_lat"] = radioData.digitalData.gpsLatitude;
     doc["gps_lon"] = radioData.digitalData.gpsLongitude;
-    doc["pitch"] = radioData.analogData.pitch;
-    doc["roll"] = radioData.analogData.roll;
+    doc["pitch_angle"] = radioData.analogData.pitch;
+    doc["roll_angle"] = radioData.analogData.roll;
+    doc["pitch"] = radioData.functionData.pitch * 100;
+    doc["roll"] = radioData.functionData.roll * 100;
     doc["heading"] = radioData.dualRateData.pitch;
     doc["tx_voltage"] = radioData.analogData.battery;
     doc["rx_voltage"] = radioData.transmitterData.receiverBatteryVoltage;
     doc["throttle_voltage"] = radioData.analogData.throttle;
+    doc["trim_pitch"] = radioData.trimData.pitch * 100;
+    doc["trim_roll"] = radioData.trimData.roll * 100;
+    doc["throttle"] = radioData.functionData.throttle * 100;
 
     // Parameter ins JSON-Dokument schreiben
     doc["ddr_pitch"] = radioData.dualRateData.pitch * 100;

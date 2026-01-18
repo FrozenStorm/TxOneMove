@@ -346,7 +346,11 @@
             <div class="status disconnected" id="status">Getrennt</div>
             <button onclick="connectBLE()" id="connectBtn" style="margin-top: 12px; width: 100%;">Verbinden</button>
             <button onclick="disconnectBLE()" id="disconnectBtn" style="margin-top: 8px; width: 100%; display: none;">Trennen</button>
+            <button onclick="resetTrim()" id="resetTrimBtn" style="margin-top: 8px; width: 100%; display: none; background: linear-gradient(135deg, var(--accent-2), rgba(0,212,255,.7));">
+                🔄 Reset Trim
+            </button>
         </div>
+
 
         <!-- Karte und Heading -->
         <div class="panel">
@@ -359,6 +363,10 @@
         <div class="panel">
             <h2>📊 Telemetrie</h2>
             <div class="telemetry-grid" id="telemetryGrid">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Armed</div>
+                    <div class="telemetry-value" id="telem-armed">--</div>
+                </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Tx Spannung</div>
                     <div class="telemetry-value" id="telem-tx_voltage">--</div>
@@ -376,6 +384,10 @@
                     <div class="telemetry-value" id="telem-lon">--</div>
                 </div>
                 <div class="telemetry-item">
+                    <div class="telemetry-label">Heading</div>
+                    <div class="telemetry-value" id="telem-heading">--</div>
+                </div>
+                <div class="telemetry-item">
                     <div class="telemetry-label">Pitch</div>
                     <div class="telemetry-value" id="telem-pitch">--</div>
                 </div>
@@ -384,8 +396,16 @@
                     <div class="telemetry-value" id="telem-roll">--</div>
                 </div>
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Heading</div>
-                    <div class="telemetry-value" id="telem-heading">--</div>
+                    <div class="telemetry-label">Throttle</div>
+                    <div class="telemetry-value" id="telem-throttle">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Trim Pitch</div>
+                    <div class="telemetry-value" id="telem-trim_pitch">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Trim Roll</div>
+                    <div class="telemetry-value" id="telem-trim_roll">--</div>
                 </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Throttle</div>
@@ -410,6 +430,12 @@
             <h2>⚙️ Parameter</h2>
             <div class="controls" id="controlsContainer">
                 <!-- Dynamisch gefüllt -->
+            </div>
+            <!-- NEUER SAVE-KNOPF HIER -->
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <button onclick="saveParams()" style="width: 100%; background: linear-gradient(135deg, var(--success), rgba(39,209,124,.7));">
+                💾 Save
+                </button>
             </div>
         </div>
 
@@ -439,7 +465,17 @@
             throttleLimit_min: 0,
             throttleLimit_max: 100,
             tx_voltage: 0,
-            rx_voltage: 0
+            rx_voltage: 0,
+            ddr_pitch: 0,
+            ddr_roll: 0,
+            expo_pitch: 0,
+            expo_roll: 0,
+            expo_throttle: 0,
+            throttle_to_pitch: 0,
+            trim_pitch: 0,
+            trim_roll: 0,
+            throttle_max: 0,
+            throttle_min: 0
         };
 
         // ============ BLE FUNKTIONEN ============
@@ -463,6 +499,8 @@
 
                 updateStatus(true);
                 addLog("✓ Verbunden!");
+                
+                
             } catch (error) {
                 addLog("✗ Fehler: " + error.message);
             }
@@ -473,6 +511,28 @@
                 await bleDevice.gatt.disconnect();
                 updateStatus(false);
                 addLog("Getrennt");
+                
+                // *** NEU: Parameter-Felder löschen ***
+                const container = document.getElementById('controlsContainer');
+                container.innerHTML = '';
+            }
+        }
+
+        // *** NEUE REFRESH-FUNKTION ***
+        // *** NEUE RESET_TRIM-FUNKTION ***
+        async function resetTrim() {
+            if (!rxChar) { 
+                addLog("✗ Nicht verbunden!"); 
+                return; 
+            }
+            
+            try {
+                const cmd = { command: "RESET_TRIM" };
+                const jsonStr = JSON.stringify(cmd);
+                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
+                addLog("→ RESET_TRIM gesendet!");
+            } catch (error) {
+                addLog("✗ Reset-Fehler: " + error.message);
             }
         }
 
@@ -505,28 +565,25 @@
             map.setView([data.gps_lat || 46.8, data.gps_lon || 7.8], 16);
             marker.setLatLng([data.gps_lat || 46.8, data.gps_lon || 7.8]);
 
-            // Heading-Pfeil drehen
-            // if (data.heading !== undefined) {
-            //     marker.setRotationAngle(data.heading);
-            //     document.getElementById('headingArrow').style.transform = 
-            //         `translateX(-50%) rotate(${data.heading}deg)`;
-            // }
-
             // Horizont (Pitch + Roll)
-            const roll = data.roll || 0;
-            const pitch = data.pitch || 0;
+            const roll = data.roll_angle || 0;
+            const pitch = data.pitch_angle || 0;
             document.getElementById('horizonNeedle').style.transform = 
                 `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
 
             // Telemetrie-Anzeige
+            updateTelemDisplay('armed', data.armed, 1, '');
             updateTelemDisplay('lat', data.gps_lat, 6, '°');
             updateTelemDisplay('lon', data.gps_lon, 6, '°');
-            updateTelemDisplay('pitch', data.pitch, 1, '°');
-            updateTelemDisplay('roll', data.roll, 1, '°');
+            updateTelemDisplay('pitch', data.pitch, 0, '%');
+            updateTelemDisplay('roll', data.roll, 0, '%');
             updateTelemDisplay('heading', data.heading, 1, '°');
             updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
             updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
             updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
+            updateTelemDisplay('trim_pitch', data.trim_pitch, 0, '%');
+            updateTelemDisplay('trim_roll', data.trim_roll, 0, '%');
+            updateTelemDisplay('throttle', data.throttle, 0, '%');
 
             // Parameter aus Daten
             updateParameterDisplay(data);
@@ -552,13 +609,14 @@
             const container = document.getElementById('controlsContainer');
             container.innerHTML = '';
 
+            // *** ANGEPASSTE FIELDS mit neuem Range für throttle_to_pitch und neuen Trims ***
             const fields = [
                 { key: 'ddr_pitch', label: 'D/R Pitch [%]', type: 'range', min: 0, max: 100 },
                 { key: 'ddr_roll', label: 'D/R Roll [%]', type: 'range', min: 0, max: 100 },
                 { key: 'expo_pitch', label: 'Expo Pitch [%]', type: 'range', min: 0, max: 100 },
                 { key: 'expo_roll', label: 'Expo Roll [%]', type: 'range', min: 0, max: 100 },
                 { key: 'expo_throttle', label: 'Expo Throttle [%]', type: 'range', min: 0, max: 100 },
-                { key: 'throttle_to_pitch', label: 'Throttle -> Pitch [%]', type: 'range', min: 0, max: 100 },
+                { key: 'throttle_to_pitch', label: 'Throttle → Pitch [%]', type: 'range', min: -100, max: 100 },
                 { key: 'throttle_max', label: 'Throttle max [V]', type: 'number', min: 0, max: 3.3 },
                 { key: 'throttle_min', label: 'Throttle min [V]', type: 'number', min: 0, max: 3.3 }
             ];
@@ -576,6 +634,7 @@
                     input.type = 'number';
                     input.min = field.min || 0;
                     input.max = field.max || 100;
+                    input.step = '0.1';
                     input.value = data[field.key] || 0;
                     input.onchange = () => sendCommand({ [field.key]: parseFloat(input.value) });
                     group.appendChild(input);
@@ -590,6 +649,7 @@
                     valueSpan.style.fontSize = '12px';
                     valueSpan.style.marginTop = '4px';
                     valueSpan.style.display = 'block';
+                    valueSpan.style.color = 'var(--muted)';
                     input.oninput = () => {
                         valueSpan.textContent = input.value + '%';
                         sendCommand({ [field.key]: parseFloat(input.value) });
@@ -607,6 +667,7 @@
             const elem = document.getElementById('status');
             document.getElementById('connectBtn').style.display = connected ? 'none' : 'block';
             document.getElementById('disconnectBtn').style.display = connected ? 'block' : 'none';
+            document.getElementById('resetTrimBtn').style.display = connected ? 'block' : 'none';  // *** NEU ***
             
             if (connected) {
                 elem.textContent = '✓ Verbunden';
@@ -617,11 +678,29 @@
             }
         }
 
+
         function addLog(msg) {
             const log = document.getElementById('debugLog');
             const timestamp = new Date().toLocaleTimeString();
             log.innerHTML = `[${timestamp}] ${msg}<br>` + log.innerHTML;
             if (log.children.length > 20) log.removeChild(log.lastChild);
+        }
+
+        // *** NEUE SAVE-FUNKTION ***
+        async function saveParams() {
+            if (!rxChar) { 
+                addLog("✗ Nicht verbunden!"); 
+                return; 
+            }
+            
+            try {
+                const cmd = { command: "SAVE_PARAMS" };
+                const jsonStr = JSON.stringify(cmd);
+                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
+                addLog("→ SAVE_PARAMS gesendet!");
+            } catch (error) {
+                addLog("✗ Save-Fehler: " + error.message);
+            }
         }
 
         // ============ INIT ============
@@ -640,6 +719,7 @@
             initMap();
             addLog("WebApp bereit. Klicke 'Verbinden'");
         });
+
     </script>
 </body>
 </html>
