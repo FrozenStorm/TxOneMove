@@ -546,17 +546,58 @@
             }
         }
 
+        // ============ COMMAND QUEUE & DEBOUNCE ============
+        let commandQueue = [];
+        let isSending = false;
+        let debounceTimers = {};
+
         async function sendCommand(cmdJson) {
             if (!rxChar) { alert("Nicht verbunden!"); return; }
+            
+            // In Queue hinzufügen
+            commandQueue.push(cmdJson);
+            
+            // Sofort verarbeiten wenn nichts läuft
+            if (!isSending) {
+                processCommandQueue();
+            }
+        }
+
+        async function processCommandQueue() {
+            if (commandQueue.length === 0 || isSending) return;
+            
+            isSending = true;
+            const cmd = commandQueue.shift();
+            
             try {
-                const jsonStr = JSON.stringify(cmdJson);
+                const jsonStr = JSON.stringify(cmd);
                 await rxChar.writeValue(new TextEncoder().encode(jsonStr));
                 addLog("→ Gesendet: " + jsonStr);
             } catch (error) {
                 addLog("✗ Send-Fehler: " + error.message);
             }
+            
+            isSending = false;
+            
+            // Nächsten Command verarbeiten (mit kleiner Verzögerung)
+            if (commandQueue.length > 0) {
+                setTimeout(processCommandQueue, 50);
+            }
         }
 
+        // *** DEBOUNCE FÜR RANGE-INPUTS ***
+        function sendCommandDebounced(cmdJson, key) {
+            // Alten Timer löschen falls vorhanden
+            if (debounceTimers[key]) {
+                clearTimeout(debounceTimers[key]);
+            }
+            
+            // Neuer Timer: 200ms warten nach dem letzten Input
+            debounceTimers[key] = setTimeout(() => {
+                sendCommand(cmdJson);
+                delete debounceTimers[key];
+            }, 200);
+        }
         // ============ TELEMETRIE ============
         function updateTelemetry(data) {
             Object.assign(currentData, data);
@@ -609,7 +650,6 @@
             const container = document.getElementById('controlsContainer');
             container.innerHTML = '';
 
-            // *** ANGEPASSTE FIELDS mit neuem Range für throttle_to_pitch und neuen Trims ***
             const fields = [
                 { key: 'ddr_pitch', label: 'D/R Pitch [%]', type: 'range', min: 0, max: 100 },
                 { key: 'ddr_roll', label: 'D/R Roll [%]', type: 'range', min: 0, max: 100 },
@@ -650,10 +690,13 @@
                     valueSpan.style.marginTop = '4px';
                     valueSpan.style.display = 'block';
                     valueSpan.style.color = 'var(--muted)';
+                    
+                    // *** GEÄNDERT: Debounce statt direkter Send ***
                     input.oninput = () => {
                         valueSpan.textContent = input.value + '%';
-                        sendCommand({ [field.key]: parseFloat(input.value) });
+                        sendCommandDebounced({ [field.key]: parseFloat(input.value) }, field.key);
                     };
+                    
                     group.appendChild(input);
                     group.appendChild(valueSpan);
                 }
