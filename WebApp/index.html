@@ -10,214 +10,335 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-compass/dist/leaflet-compass.min.css" />
     <script src="https://unpkg.com/leaflet-control-compass/dist/leaflet-compass.min.js"></script>
     <style>
-        :root {
-            --color-primary: #2196F3;
-            --color-success: #4CAF50;
-            --color-error: #F44336;
-            --color-bg: #f5f5f5;
-            --color-surface: #ffffff;
+        :root{
+        --bg0:#070A10;
+        --bg1:#0B1220;
+        --surface:rgba(255,255,255,.06);
+        --surface-2:rgba(255,255,255,.09);
+        --border:rgba(255,255,255,.12);
+
+        --text:rgba(255,255,255,.92);
+        --muted:rgba(255,255,255,.62);
+
+        --accent:#FF5A2A;     /* Hauptakzent (Buttons/Highlights) */
+        --accent-2:#00D4FF;   /* Sekundärakzent (Focus/Details) */
+
+        --success:#27D17C;
+        --danger:#FF4D4F;
+
+        --shadow: 0 18px 40px rgba(0,0,0,.45);
+        --radius:14px;
+        --radius-sm:12px;
+
+        --focus: 0 0 0 3px rgba(0,212,255,.22);
         }
 
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--color-bg);
+        *{ box-sizing:border-box; }
+
+        html, body{ height:100%; }
+
+        body{
+        margin:0;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        color:var(--text);
+        background:
+            radial-gradient(900px 520px at 10% -10%, rgba(0,212,255,.18), transparent 55%),
+            radial-gradient(800px 520px at 90% 0%, rgba(255,90,42,.16), transparent 55%),
+            linear-gradient(180deg, var(--bg0), var(--bg1));
         }
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            padding: 16px;
-            max-width: 1400px;
-            margin: 0 auto;
+        /* Topbar */
+        .topbar{
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: rgba(7,10,16,.65);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
         }
 
-        @media (max-width: 1024px) {
-            .container { grid-template-columns: 1fr; }
+        .brand{
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 14px 16px;
+        display:flex;
+        align-items:center;
+        gap:12px;
         }
 
-        .panel {
-            background: var(--color-surface);
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .brand-mark{
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        box-shadow: 0 0 0 3px rgba(255,255,255,.06);
         }
 
-        .panel h2 {
-            margin: 0 0 16px 0;
-            font-size: 18px;
-            color: #333;
+        .brand-title{
+        font-weight: 800;
+        letter-spacing: .02em;
         }
 
-        #map {
-            height: 400px;
-            border-radius: 8px;
-            overflow: hidden;
+        .brand-sub{
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
         }
 
-        .horizon {
-            height: 200px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            position: relative;
-            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #8B7355 50%, #654321 100%);
-            overflow: hidden;
-            margin: 16px 0;
+        /* Layout */
+        .container{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        padding: 16px;
+        max-width: 1400px;
+        margin: 0 auto;
         }
 
-        .horizon-needle {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.1s;
+        @media (max-width: 1024px){
+        .container{ grid-template-columns:1fr; }
         }
 
-        .horizon-line {
-            width: 80%;
-            height: 2px;
-            background: white;
-            border: 1px solid #333;
+        /* Panels */
+        .panel{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
         }
 
-        .horizon-marker {
-            position: absolute;
-            width: 2px;
-            height: 40px;
-            background: white;
-            top: 50%;
-            left: 50%;
-            transform: translateX(-50%) translateY(-50%);
+        .panel h2{
+        margin: 0 0 14px 0;
+        font-size: 12px;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,.78);
+        font-weight: 800;
         }
 
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        /* Map */
+        #map{
+        height: 420px;
+        border-radius: var(--radius-sm);
+        overflow:hidden;
+        border: 1px solid var(--border);
         }
 
-        .control-group {
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 12px;
-            background: #fafafa;
+        /* Leaflet Controls leicht „dunkler“ */
+        .leaflet-control, .leaflet-bar a{
+        background: rgba(10,16,28,.75) !important;
+        color: var(--text) !important;
+        border-color: rgba(255,255,255,.14) !important;
+        }
+        .leaflet-container{
+        background: rgba(10,16,28,.8);
         }
 
-        .control-group label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: #666;
-            text-transform: uppercase;
+        /* Horizon */
+        .horizon{
+        height: 220px;
+        border-radius: var(--radius-sm);
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background:
+            linear-gradient(180deg,
+            rgba(0,212,255,.18) 0%,
+            rgba(0,212,255,.06) 48%,
+            rgba(255,90,42,.08) 52%,
+            rgba(255,90,42,.03) 100%);
         }
 
-        input[type="range"],
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+        .horizon-needle{
+        position:absolute;
+        inset:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        transition: transform 0.08s linear;
         }
 
-        input[type="range"] {
-            padding: 0;
-            cursor: pointer;
+        .horizon-line{
+        width: 84%;
+        height: 2px;
+        background: rgba(255,255,255,.9);
+        box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+        border-radius: 2px;
         }
 
-        button {
-            padding: 10px 16px;
-            background: var(--color-primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background 0.3s;
+        .horizon-marker{
+        position:absolute;
+        width:2px;
+        height:46px;
+        background: rgba(255,255,255,.9);
+        top:50%;
+        left:50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 0 1px rgba(0,0,0,.35);
         }
 
-        button:hover { background: #1976D2; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* Controls / Inputs */
+        .controls{ display:flex; flex-direction:column; gap: 12px; }
 
-        .status {
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 600;
-            text-align: center;
+        .control-group{
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: var(--radius-sm);
+        padding: 12px;
+        background: rgba(255,255,255,.04);
         }
 
-        .status.connected {
-            background: #E8F5E9;
-            color: var(--color-success);
+        .control-group label{
+        display:block;
+        font-size: 11px;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 800;
+        margin-bottom: 8px;
         }
 
-        .status.disconnected {
-            background: #FFEBEE;
-            color: var(--color-error);
+        input[type="number"], select{
+        width: 100%;
+        padding: 10px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(10,16,28,.55);
+        color: var(--text);
+        outline: none;
         }
 
-        .telemetry-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-            margin: 16px 0;
+        input[type="number"]:focus, select:focus{
+        box-shadow: var(--focus);
+        border-color: rgba(0,212,255,.45);
         }
 
-        .telemetry-item {
-            background: #f9f9f9;
-            padding: 12px;
-            border-radius: 6px;
-            border-left: 4px solid var(--color-primary);
+        /* Range */
+        input[type="range"]{
+        width: 100%;
+        cursor: pointer;
+        accent-color: var(--accent);
         }
 
-        .telemetry-label {
-            font-size: 12px;
-            color: #999;
-            text-transform: uppercase;
-            font-weight: 600;
+        /* Buttons */
+        button{
+        padding: 11px 14px;
+        border: 1px solid rgba(255,255,255,.12);
+        color: rgba(255,255,255,.95);
+        background: linear-gradient(135deg, rgba(255,90,42,.95), rgba(255,90,42,.70));
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 800;
+        letter-spacing: .02em;
+        transition: transform .12s ease, filter .12s ease, background .2s ease;
         }
 
-        .telemetry-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #333;
-            margin-top: 4px;
+        button:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+        button:active{ transform: translateY(0px); }
+        button:disabled{ opacity: .5; cursor: not-allowed; transform:none; }
+
+        /* Status */
+        .status{
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,.12);
+        font-weight: 800;
+        text-align: center;
+        background: rgba(255,255,255,.04);
         }
 
-        .heading-arrow {
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-bottom: 30px solid #FF5722;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            transition: transform 0.1s;
+        .status.connected{
+        border-color: rgba(39,209,124,.30);
+        background: rgba(39,209,124,.10);
+        color: var(--success);
         }
 
-        .button-group {
-            display: flex;
-            gap: 8px;
+        .status.disconnected{
+        border-color: rgba(255,77,79,.30);
+        background: rgba(255,77,79,.10);
+        color: var(--danger);
         }
 
-        .button-group button {
-            flex: 1;
+        /* Telemetry */
+        .telemetry-grid{
+        display:grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin: 14px 0 0 0;
         }
+
+        .telemetry-item{
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: var(--radius-sm);
+        padding: 12px;
+        position: relative;
+        overflow:hidden;
+        }
+
+        .telemetry-item::before{
+        content:"";
+        position:absolute;
+        inset:0;
+        background: radial-gradient(300px 120px at 0% 0%, rgba(0,212,255,.10), transparent 60%);
+        pointer-events:none;
+        }
+
+        .telemetry-label{
+        font-size: 11px;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 800;
+        }
+
+        .telemetry-value{
+        margin-top: 6px;
+        font-size: 22px;
+        font-weight: 900;
+        color: rgba(255,255,255,.95);
+        }
+
+        /* Heading Arrow */
+        .heading-arrow{
+        position:absolute;
+        width:0;
+        height:0;
+        border-left: 14px solid transparent;
+        border-right: 14px solid transparent;
+        border-bottom: 28px solid var(--accent);
+        top: 64px;              /* wirkt mit Topbar harmonischer */
+        left: 50%;
+        transform: translateX(-50%);
+        filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+        transition: transform .08s linear;
+        }
+
+        /* Log */
+        #debugLog{
+        height: 200px;
+        overflow-y: auto;
+        background: rgba(10,16,28,.55) !important;
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 12px !important;
+        padding: 10px !important;
+        color: rgba(255,255,255,.86);
+        }
+
     </style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><circle cx='96' cy='96' r='90' fill='%232196F3'/><path d='M96,40 L130,140 L96,110 L62,140 Z' fill='white'/></svg>">
 </head>
 <body>
+    <header class="topbar">
+        <div class="brand">
+        <div class="brand-mark"></div>
+            <div class="brand-text">
+                <div class="brand-title">TxOneMove</div>
+                <div class="brand-sub">Telemetry • BLE • Map</div>
+            </div>
+        </div>
+    </header>
     <div class="container">
         <!-- Verbindung und Status -->
         <div class="panel">
