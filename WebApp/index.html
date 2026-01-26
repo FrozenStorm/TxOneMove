@@ -3,766 +3,1172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TxOneMove</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-compass/dist/leaflet-compass.min.css" />
-    <script src="https://unpkg.com/leaflet-control-compass/dist/leaflet-compass.min.js"></script>
+    <title>TxOneMove Control Panel</title>
     <style>
-        :root{
-        --bg0:#070A10;
-        --bg1:#0B1220;
-        --surface:rgba(255,255,255,.06);
-        --surface-2:rgba(255,255,255,.09);
-        --border:rgba(255,255,255,.12);
-
-        --text:rgba(255,255,255,.92);
-        --muted:rgba(255,255,255,.62);
-
-        --accent:#FF5A2A;     /* Hauptakzent (Buttons/Highlights) */
-        --accent-2:#00D4FF;   /* Sekundärakzent (Focus/Details) */
-
-        --success:#27D17C;
-        --danger:#FF4D4F;
-
-        --shadow: 0 18px 40px rgba(0,0,0,.45);
-        --radius:14px;
-        --radius-sm:12px;
-
-        --focus: 0 0 0 3px rgba(0,212,255,.22);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        *{ box-sizing:border-box; }
-
-        html, body{ height:100%; }
-
-        body{
-        margin:0;
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-        color:var(--text);
-        background:
-            radial-gradient(900px 520px at 10% -10%, rgba(0,212,255,.18), transparent 55%),
-            radial-gradient(800px 520px at 90% 0%, rgba(255,90,42,.16), transparent 55%),
-            linear-gradient(180deg, var(--bg0), var(--bg1));
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
         }
 
-        /* Topbar */
-        .topbar{
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        background: rgba(7,10,16,.65);
-        backdrop-filter: blur(10px);
-        border-bottom: 1px solid var(--border);
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
-        .brand{
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 14px 16px;
-        display:flex;
-        align-items:center;
-        gap:12px;
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .brand-mark{
-        width: 14px;
-        height: 14px;
-        border-radius: 999px;
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
         }
 
-        .brand-title{
-        font-weight: 800;
-        letter-spacing: .02em;
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ccc;
+            display: inline-block;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
         }
 
-        .brand-sub{
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 2px;
+        .status-indicator.connected {
+            background: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
         }
 
-        /* Layout */
-        .container{
-        display:grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-        padding: 16px;
-        max-width: 1400px;
-        margin: 0 auto;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        @media (max-width: 1024px){
-        .container{ grid-template-columns:1fr; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
         }
 
-        /* Panels */
-        .panel{
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 16px;
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(10px);
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        .panel h2{
-        margin: 0 0 14px 0;
-        font-size: 12px;
-        letter-spacing: .14em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,.78);
-        font-weight: 800;
+        .card h2 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
         }
 
-        /* Map */
-        #map{
-        height: 420px;
-        border-radius: var(--radius-sm);
-        overflow:hidden;
-        border: 1px solid var(--border);
+        .card h3 {
+            color: #764ba2;
+            font-size: 14px;
+            margin-top: 15px;
+            margin-bottom: 10px;
         }
 
-        /* Leaflet Controls leicht „dunkler“ */
-        .leaflet-control, .leaflet-bar a{
-        background: rgba(10,16,28,.75) !important;
-        color: var(--text) !important;
-        border-color: rgba(255,255,255,.14) !important;
-        }
-        .leaflet-container{
-        background: rgba(10,16,28,.8);
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
         }
 
-        /* Horizon */
-        .horizon{
-        height: 220px;
-        border-radius: var(--radius-sm);
-        position: relative;
-        overflow: hidden;
-        border: 1px solid var(--border);
-        background:
-            linear-gradient(180deg,
-            rgba(0,212,255,.18) 0%,
-            rgba(0,212,255,.06) 48%,
-            rgba(255,90,42,.08) 52%,
-            rgba(255,90,42,.03) 100%);
+        .data-row:last-child {
+            border-bottom: none;
         }
 
-        .horizon-needle{
-        position:absolute;
-        inset:0;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        transition: transform 0.08s linear;
+        .data-label {
+            font-weight: 600;
+            color: #555;
         }
 
-        .horizon-line{
-        width: 84%;
-        height: 2px;
-        background: rgba(255,255,255,.9);
-        box-shadow: 0 0 0 1px rgba(0,0,0,.35);
-        border-radius: 2px;
+        .data-value {
+            color: #667eea;
+            font-weight: 500;
+            text-align: right;
         }
 
-        .horizon-marker{
-        position:absolute;
-        width:2px;
-        height:46px;
-        background: rgba(255,255,255,.9);
-        top:50%;
-        left:50%;
-        transform: translate(-50%, -50%);
-        box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+        .slider-group {
+            margin: 15px 0;
         }
 
-        /* Controls / Inputs */
-        .controls{ display:flex; flex-direction:column; gap: 12px; }
-
-        .control-group{
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: var(--radius-sm);
-        padding: 12px;
-        background: rgba(255,255,255,.04);
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: #555;
         }
 
-        .control-group label{
-        display:block;
-        font-size: 11px;
-        letter-spacing: .12em;
-        text-transform: uppercase;
-        color: var(--muted);
-        font-weight: 800;
-        margin-bottom: 8px;
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
         }
 
-        input[type="number"], select{
-        width: 100%;
-        padding: 10px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,.14);
-        background: rgba(10,16,28,.55);
-        color: var(--text);
-        outline: none;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        input[type="number"]:focus, select:focus{
-        box-shadow: var(--focus);
-        border-color: rgba(0,212,255,.45);
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        /* Range */
-        input[type="range"]{
-        width: 100%;
-        cursor: pointer;
-        accent-color: var(--accent);
+        .input-group {
+            margin: 12px 0;
+            display: flex;
+            gap: 10px;
         }
 
-        /* Buttons */
-        button{
-        padding: 11px 14px;
-        border: 1px solid rgba(255,255,255,.12);
-        color: rgba(255,255,255,.95);
-        background: linear-gradient(135deg, rgba(255,90,42,.95), rgba(255,90,42,.70));
-        border-radius: 12px;
-        cursor: pointer;
-        font-weight: 800;
-        letter-spacing: .02em;
-        transition: transform .12s ease, filter .12s ease, background .2s ease;
+        input[type="text"], input[type="number"], select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.3s;
         }
 
-        button:hover{ filter: brightness(1.05); transform: translateY(-1px); }
-        button:active{ transform: translateY(0px); }
-        button:disabled{ opacity: .5; cursor: not-allowed; transform:none; }
-
-        /* Status */
-        .status{
-        padding: 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.12);
-        font-weight: 800;
-        text-align: center;
-        background: rgba(255,255,255,.04);
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 3px rgba(102, 126, 234, 0.3);
         }
 
-        .status.connected{
-        border-color: rgba(39,209,124,.30);
-        background: rgba(39,209,124,.10);
-        color: var(--success);
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin: 5px 0;
         }
 
-        .status.disconnected{
-        border-color: rgba(255,77,79,.30);
-        background: rgba(255,77,79,.10);
-        color: var(--danger);
+        button:hover {
+            background: #764ba2;
         }
 
-        /* Telemetry */
-        .telemetry-grid{
-        display:grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 12px;
-        margin: 14px 0 0 0;
+        button:active {
+            transform: scale(0.98);
         }
 
-        .telemetry-item{
-        background: rgba(255,255,255,.04);
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: var(--radius-sm);
-        padding: 12px;
-        position: relative;
-        overflow:hidden;
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        .telemetry-item::before{
-        content:"";
-        position:absolute;
-        inset:0;
-        background: radial-gradient(300px 120px at 0% 0%, rgba(0,212,255,.10), transparent 60%);
-        pointer-events:none;
+        .channel-config {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
         }
 
-        .telemetry-label{
-        font-size: 11px;
-        letter-spacing: .12em;
-        text-transform: uppercase;
-        color: var(--muted);
-        font-weight: 800;
+        .channel-config-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 13px;
         }
 
-        .telemetry-value{
-        margin-top: 6px;
-        font-size: 22px;
-        font-weight: 900;
-        color: rgba(255,255,255,.95);
+        .channel-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 8px;
+            margin: 8px 0;
+            font-size: 12px;
         }
 
-        /* Heading Arrow */
-        .heading-arrow{
-        position:absolute;
-        width:0;
-        height:0;
-        border-left: 14px solid transparent;
-        border-right: 14px solid transparent;
-        border-bottom: 28px solid var(--accent);
-        top: 64px;              /* wirkt mit Topbar harmonischer */
-        left: 50%;
-        transform: translateX(-50%);
-        filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-        transition: transform .08s linear;
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
         }
 
-        /* Log */
-        #debugLog{
-        height: 200px;
-        overflow-y: auto;
-        background: rgba(10,16,28,.55) !important;
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: 12px !important;
-        padding: 10px !important;
-        color: rgba(255,255,255,.86);
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #667eea;
         }
 
+        .orientation-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .orientation-btn {
+            padding: 10px;
+            border: 2px solid #ddd;
+            background: white;
+            color: #333;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .orientation-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .gps-indicator {
+            padding: 12px;
+            background: #f0f4ff;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+
+        .gps-indicator.valid {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .gps-indicator.invalid {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .meter {
+            margin: 12px 0;
+        }
+
+        .meter-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #555;
+        }
+
+        .meter-bar {
+            width: 100%;
+            height: 24px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #FFC107);
+            width: 0%;
+            transition: width 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #999;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+
+            .orientation-selector {
+                grid-template-columns: 1fr;
+            }
+
+            .channel-row {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><circle cx='96' cy='96' r='90' fill='%232196F3'/><path d='M96,40 L130,140 L96,110 L62,140 Z' fill='white'/></svg>">
 </head>
 <body>
-    <header class="topbar">
-        <div class="brand">
-        <div class="brand-mark"></div>
-            <div class="brand-text">
-                <div class="brand-title">TxOneMove</div>
-                <div class="brand-sub">Telemetry • BLE • Map</div>
-            </div>
-        </div>
-    </header>
     <div class="container">
-        <!-- Verbindung und Status -->
-        <div class="panel">
-            <h2>🔌 Verbindung</h2>
-            <div class="status disconnected" id="status">Getrennt</div>
-            <button onclick="connectBLE()" id="connectBtn" style="margin-top: 12px; width: 100%;">Verbinden</button>
-            <button onclick="disconnectBLE()" id="disconnectBtn" style="margin-top: 8px; width: 100%; display: none;">Trennen</button>
-            <button onclick="resetTrim()" id="resetTrimBtn" style="margin-top: 8px; width: 100%; display: none; background: linear-gradient(135deg, var(--accent-2), rgba(0,212,255,.7));">
-                🔄 Reset Trim
-            </button>
+        <div class="header">
+            <div>
+                <h1>TxOneMove <span class="status-indicator" id="statusIndicator"></span></h1>
+                <p id="modelName" style="color: #999; font-size: 14px;">Modell: ---</p>
+            </div>
+            <div style="text-align: right;">
+                <button onclick="saveParameters()">💾 Speichern</button>
+                <button onclick="resetTrim()">↺ Trim zurücksetzen</button>
+            </div>
         </div>
 
+        <!-- TELEMETRY SECTION -->
+        <div class="grid">
+            <!-- GPS & Location -->
+            <div class="card">
+                <h2>📍 GPS & Position</h2>
+                <div class="data-row">
+                    <span class="data-label">Latitude:</span>
+                    <span class="data-value" id="gpsLat">0.0000</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Longitude:</span>
+                    <span class="data-value" id="gpsLon">0.0000</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Speed (km/h):</span>
+                    <span class="data-value" id="gpsSpeed">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Altitude (m):</span>
+                    <span class="data-value" id="gpsAltitude">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Satellites:</span>
+                    <span class="data-value" id="gpsSatellites">0</span>
+                </div>
+                <div id="gpsStatus" class="gps-indicator invalid">
+                    ❌ Kein GPS-Signal
+                </div>
+            </div>
 
-        <!-- Karte und Heading -->
-        <div class="panel">
-            <h2>🗺️ Position & Heading</h2>
-            <div id="map"></div>
-            <div class="heading-arrow" id="headingArrow"></div>
-        </div>
+            <!-- Attitude & Angles -->
+            <div class="card">
+                <h2>🎯 Attitude & Angles</h2>
+                <div class="data-row">
+                    <span class="data-label">Pitch Angle:</span>
+                    <span class="data-value" id="pitchAngle">0.0°</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Roll Angle:</span>
+                    <span class="data-value" id="rollAngle">0.0°</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Pitch (Function):</span>
+                    <span class="data-value" id="funcPitch">0%</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Roll (Function):</span>
+                    <span class="data-value" id="funcRoll">0%</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Heading:</span>
+                    <span class="data-value" id="heading">0°</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Armed:</span>
+                    <span class="data-value" id="armed">❌</span>
+                </div>
+            </div>
 
-        <!-- Telemetrie-Anzeige -->
-        <div class="panel">
-            <h2>📊 Telemetrie</h2>
-            <div class="telemetry-grid" id="telemetryGrid">
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Armed</div>
-                    <div class="telemetry-value" id="telem-armed">--</div>
+            <!-- V-Tail Control -->
+            <div class="card">
+                <h2>🛩️ V-Tail Control</h2>
+                <div class="data-row">
+                    <span class="data-label">V-Tail Left:</span>
+                    <span class="data-value" id="vtailLeft">0%</span>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Tx Spannung</div>
-                    <div class="telemetry-value" id="telem-tx_voltage">--</div>
+                <div class="data-row">
+                    <span class="data-label">V-Tail Right:</span>
+                    <span class="data-value" id="vtailRight">0%</span>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Rx Spannung</div>
-                    <div class="telemetry-value" id="telem-rx_voltage">--</div>
+                <div class="meter">
+                    <div class="meter-label">
+                        <span>V-Tail Left</span>
+                        <span id="vtailLeftPercent">0%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="vtailLeftBar"></div>
+                    </div>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Breitengrad</div>
-                    <div class="telemetry-value" id="telem-lat">--</div>
+                <div class="meter">
+                    <div class="meter-label">
+                        <span>V-Tail Right</span>
+                        <span id="vtailRightPercent">0%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="vtailRightBar"></div>
+                    </div>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Längengrad</div>
-                    <div class="telemetry-value" id="telem-lon">--</div>
+            </div>
+
+            <!-- Power & Voltage -->
+            <div class="card">
+                <h2>🔋 Power & Voltage</h2>
+                <div class="data-row">
+                    <span class="data-label">TX Voltage:</span>
+                    <span class="data-value" id="txVoltage">0.0V</span>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Heading</div>
-                    <div class="telemetry-value" id="telem-heading">--</div>
+                <div class="data-row">
+                    <span class="data-label">RX Voltage:</span>
+                    <span class="data-value" id="rxVoltage">0.0V</span>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Pitch</div>
-                    <div class="telemetry-value" id="telem-pitch">--</div>
+                <div class="data-row">
+                    <span class="data-label">Throttle Voltage:</span>
+                    <span class="data-value" id="throttleVoltage">0.0V</span>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Roll</div>
-                    <div class="telemetry-value" id="telem-roll">--</div>
+                <div class="meter">
+                    <div class="meter-label">
+                        <span>TX Battery</span>
+                        <span id="txVoltagePercent">0%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="txVoltageMeter"></div>
+                    </div>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Throttle</div>
-                    <div class="telemetry-value" id="telem-throttle">--</div>
+                <div class="meter">
+                    <div class="meter-label">
+                        <span>RX Battery</span>
+                        <span id="rxVoltagePercent">0%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="rxVoltageMeter"></div>
+                    </div>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Trim Pitch</div>
-                    <div class="telemetry-value" id="telem-trim_pitch">--</div>
+            </div>
+
+            <!-- Throttle & Control -->
+            <div class="card">
+                <h2>⚙️ Control Values</h2>
+                <div class="data-row">
+                    <span class="data-label">Throttle:</span>
+                    <span class="data-value" id="throttle">0%</span>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Trim Roll</div>
-                    <div class="telemetry-value" id="telem-trim_roll">--</div>
+                <div class="data-row">
+                    <span class="data-label">Trim Pitch:</span>
+                    <span class="data-value" id="trimPitch">0%</span>
                 </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Throttle</div>
-                    <div class="telemetry-value" id="telem-throttle_voltage">--</div>
+                <div class="data-row">
+                    <span class="data-label">Trim Roll:</span>
+                    <span class="data-value" id="trimRoll">0%</span>
+                </div>
+                <div class="meter">
+                    <div class="meter-label">
+                        <span>Throttle</span>
+                        <span id="throttlePercent">0%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="throttleMeter"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orientation -->
+            <div class="card">
+                <h2>🧭 Orientation</h2>
+                <div class="data-row">
+                    <span class="data-label">Current Orientation:</span>
+                    <span class="data-value" id="orientationValue">UNKNOWN</span>
+                </div>
+                <div class="orientation-selector" id="orientationSelector">
+                    <!-- Wird dynamisch mit JavaScript gefüllt -->
                 </div>
             </div>
         </div>
 
-        <!-- Horizont (künstlicher Horizont) -->
-        <div class="panel">
-            <h2>🎯 Horizont</h2>
-            <div class="horizon">
-                <div class="horizon-needle" id="horizonNeedle">
-                    <div class="horizon-line"></div>
+        <!-- CONFIGURATION SECTION -->
+        <div class="grid full-width">
+            <div class="card">
+                <h2>⚙️ Konfiguration</h2>
+                
+                <div class="tabs">
+                    <button class="tab-button active" onclick="switchTab(event, 'trimTab')">Trim</button>
+                    <button class="tab-button" onclick="switchTab(event, 'ratesTab')">Raten</button>
+                    <button class="tab-button" onclick="switchTab(event, 'channelsTab')">Kanäle</button>
+                    <button class="tab-button" onclick="switchTab(event, 'modelTab')">Modell</button>
                 </div>
-                <div class="horizon-marker"></div>
+
+                <!-- TRIM TAB -->
+                <div id="trimTab" class="tab-content active">
+                    <h3>Trim-Einstellungen</h3>
+                    
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Trim Pitch</span>
+                            <span id="trimPitchDisplay">0%</span>
+                        </div>
+                        <input type="range" id="trimPitchSlider" min="-100" max="100" value="0" 
+                            oninput="updateTrimPitch(this.value)">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Trim Roll</span>
+                            <span id="trimRollDisplay">0%</span>
+                        </div>
+                        <input type="range" id="trimRollSlider" min="-100" max="100" value="0"
+                            oninput="updateTrimRoll(this.value)">
+                    </div>
+                </div>
+
+                <!-- RATES TAB -->
+                <div id="ratesTab" class="tab-content">
+                    <h3>Dual Rate</h3>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Pitch Dual Rate</span>
+                            <span id="ddrPitchDisplay">100%</span>
+                        </div>
+                        <input type="range" id="ddrPitchSlider" min="0" max="200" value="100"
+                            oninput="updateDDRPitch(this.value)">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Roll Dual Rate</span>
+                            <span id="ddrRollDisplay">100%</span>
+                        </div>
+                        <input type="range" id="ddrRollSlider" min="0" max="200" value="100"
+                            oninput="updateDDRRoll(this.value)">
+                    </div>
+
+                    <h3>Exponential</h3>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Pitch Expo</span>
+                            <span id="expoPitchDisplay">0%</span>
+                        </div>
+                        <input type="range" id="expoPitchSlider" min="0" max="100" value="0"
+                            oninput="updateExpoPitch(this.value)">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Roll Expo</span>
+                            <span id="expoRollDisplay">0%</span>
+                        </div>
+                        <input type="range" id="expoRollSlider" min="0" max="100" value="0"
+                            oninput="updateExpoRoll(this.value)">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Throttle Expo</span>
+                            <span id="expoThrottleDisplay">0%</span>
+                        </div>
+                        <input type="range" id="expoThrottleSlider" min="0" max="100" value="0"
+                            oninput="updateExpoThrottle(this.value)">
+                    </div>
+
+                    <h3>Mixer</h3>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Throttle to Pitch</span>
+                            <span id="throttleToPitchDisplay">0%</span>
+                        </div>
+                        <input type="range" id="throttleToPitchSlider" min="0" max="100" value="0"
+                            oninput="updateThrottleToPitch(this.value)">
+                    </div>
+
+                    <h3>Drosselklappenbereich</h3>
+                    <div class="input-group">
+                        <label>Min:</label>
+                        <input type="number" id="throttleMinInput" min="0" max="100" value="0"
+                            onchange="updateThrottleMin(this.value)">
+                    </div>
+                    <div class="input-group">
+                        <label>Max:</label>
+                        <input type="number" id="throttleMaxInput" min="0" max="100" value="100"
+                            onchange="updateThrottleMax(this.value)">
+                    </div>
+                </div>
+
+                <!-- CHANNELS TAB -->
+                <div id="channelsTab" class="tab-content">
+                    <h3>Funktions-zu-Kanal-Zuordnung</h3>
+                    <div id="channelConfigs">
+                        <!-- Wird dynamisch mit JavaScript gefüllt -->
+                    </div>
+                </div>
+
+                <!-- MODEL TAB -->
+                <div id="modelTab" class="tab-content">
+                    <h3>Modelleinstellungen</h3>
+                    <div class="input-group">
+                        <label>Modellname:</label>
+                        <input type="text" id="modelNameInput" maxlength="12" value="123456789_12"
+                            onchange="updateModelName(this.value)">
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Parameter-Kontrollen -->
-        <div class="panel">
-            <h2>⚙️ Parameter</h2>
-            <div class="controls" id="controlsContainer">
-                <!-- Dynamisch gefüllt -->
-            </div>
-            <!-- NEUER SAVE-KNOPF HIER -->
-            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
-                <button onclick="saveParams()" style="width: 100%; background: linear-gradient(135deg, var(--success), rgba(39,209,124,.7));">
-                💾 Save
-                </button>
-            </div>
-        </div>
-
-        <!-- Debug-Log -->
-        <div class="panel">
-            <h2>📝 Log</h2>
-            <div style="height: 200px; overflow-y: auto; background: #f9f9f9; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 12px;" id="debugLog">
-                Bereit...
+        <!-- CHANNELS DATA -->
+        <div class="card full-width">
+            <h2>📊 Rohdaten Kanäle (PPM)</h2>
+            <div id="channelsDisplay" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+                <!-- Wird dynamisch mit JavaScript gefüllt -->
             </div>
         </div>
     </div>
 
     <script>
-        // ============ STATE ============
-        let bleDevice = null;
-        let txChar = null;
-        let rxChar = null;
-        let map = null;
-        let marker = null;
-        let currentData = {
-            gps_lat: 46.8,
-            gps_lon: 7.8,
-            pitch: 0,
-            roll: 0,
+        let bluetoothDevice = null;
+        let characteristic = null;
+        let radioData = {
+            armed: false,
+            gpsLat: 0,
+            gpsLon: 0,
+            gpsSpeed: 0,
+            gpsAltitude: 0,
+            gpsSatellites: 0,
+            pitchAngle: 0,
+            rollAngle: 0,
+            funcPitch: 0,
+            funcRoll: 0,
             heading: 0,
-            longPressDurationMs: 0,
-            throttleLimit_min: 0,
-            throttleLimit_max: 100,
-            tx_voltage: 0,
-            rx_voltage: 0,
-            ddr_pitch: 0,
-            ddr_roll: 0,
-            expo_pitch: 0,
-            expo_roll: 0,
-            expo_throttle: 0,
-            throttle_to_pitch: 0,
-            trim_pitch: 0,
-            trim_roll: 0,
-            throttle_max: 0,
-            throttle_min: 0
+            txVoltage: 0,
+            rxVoltage: 0,
+            throttleVoltage: 0,
+            trimPitch: 0,
+            trimRoll: 0,
+            throttle: 0,
+            ddrPitch: 100,
+            ddrRoll: 100,
+            expoPitch: 0,
+            expoRoll: 0,
+            expoThrottle: 0,
+            throttleToPitch: 0,
+            throttleMin: 0,
+            throttleMax: 100,
+            modelName: "123456789_12",
+            orientation: 0,
+            orientationNames: ["UNKNOWN", "T_UP", "T_LEFT", "T_RIGHT", "T_LEFT_DOWN", "T_LEFT_UP", "T_DOWN"],
+            functionNames: ["NONE", "PITCH", "ROLL", "VTAIL_LEFT", "VTAIL_RIGHT", "THROTTLE"],
+            vtailLeft: 0,
+            vtailRight: 0,
+            channels: new Array(16).fill(992),
+            functionToChannel: {},
+            ftc: {}
         };
 
-        // ============ BLE FUNKTIONEN ============
-        async function connectBLE() {
-            try {
-                addLog("Suche ESP32...");
-                bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'TxOneMove' }],
-                    optionalServices: ['12345678-1234-5678-1234-56789abcdef0']
-                });
-
-                addLog("Verbinde zu " + bleDevice.name);
-                const server = await bleDevice.gatt.connect();
-                const service = await server.getPrimaryService('12345678-1234-5678-1234-56789abcdef0');
-
-                txChar = await service.getCharacteristic('12345678-1234-5678-1234-56789abcdef1');
-                rxChar = await service.getCharacteristic('12345678-1234-5678-1234-56789abcdef2');
-
-                await txChar.startNotifications();
-                txChar.addEventListener('characteristicvaluechanged', onTelemetryUpdate);
-
-                updateStatus(true);
-                addLog("✓ Verbunden!");
-                
-                
-            } catch (error) {
-                addLog("✗ Fehler: " + error.message);
+        // Initialize channel configs
+        function initializeChannelConfigs() {
+            for (let i = 0; i < 8; i++) {
+                radioData.functionToChannel[i] = {
+                    invert: false,
+                    func: 0,
+                    upper: 1811,
+                    lower: 172
+                };
             }
+            renderChannelConfigs();
+            renderOrientationSelector();
         }
 
-        async function disconnectBLE() {
-            if (bleDevice) {
-                await bleDevice.gatt.disconnect();
-                updateStatus(false);
-                addLog("Getrennt");
-                
-                // *** NEU: Parameter-Felder löschen ***
-                const container = document.getElementById('controlsContainer');
-                container.innerHTML = '';
-            }
-        }
-
-        // *** NEUE REFRESH-FUNKTION ***
-        // *** NEUE RESET_TRIM-FUNKTION ***
-        async function resetTrim() {
-            if (!rxChar) { 
-                addLog("✗ Nicht verbunden!"); 
-                return; 
-            }
-            
-            try {
-                const cmd = { command: "RESET_TRIM" };
-                const jsonStr = JSON.stringify(cmd);
-                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
-                addLog("→ RESET_TRIM gesendet!");
-            } catch (error) {
-                addLog("✗ Reset-Fehler: " + error.message);
-            }
-        }
-
-        function onTelemetryUpdate(e) {
-            try {
-                const jsonStr = new TextDecoder().decode(e.target.value.buffer);
-                const data = JSON.parse(jsonStr);
-                updateTelemetry(data);
-            } catch (error) {
-                addLog("Parse-Fehler: " + error.message);
-            }
-        }
-
-        // ============ COMMAND QUEUE & DEBOUNCE ============
-        let commandQueue = [];
-        let isSending = false;
-        let debounceTimers = {};
-
-        async function sendCommand(cmdJson) {
-            if (!rxChar) { alert("Nicht verbunden!"); return; }
-            
-            // In Queue hinzufügen
-            commandQueue.push(cmdJson);
-            
-            // Sofort verarbeiten wenn nichts läuft
-            if (!isSending) {
-                processCommandQueue();
-            }
-        }
-
-        async function processCommandQueue() {
-            if (commandQueue.length === 0 || isSending) return;
-            
-            isSending = true;
-            const cmd = commandQueue.shift();
-            
-            try {
-                const jsonStr = JSON.stringify(cmd);
-                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
-                addLog("→ Gesendet: " + jsonStr);
-            } catch (error) {
-                addLog("✗ Send-Fehler: " + error.message);
-            }
-            
-            isSending = false;
-            
-            // Nächsten Command verarbeiten (mit kleiner Verzögerung)
-            if (commandQueue.length > 0) {
-                setTimeout(processCommandQueue, 50);
-            }
-        }
-
-        // *** DEBOUNCE FÜR RANGE-INPUTS ***
-        function sendCommandDebounced(cmdJson, key) {
-            // Alten Timer löschen falls vorhanden
-            if (debounceTimers[key]) {
-                clearTimeout(debounceTimers[key]);
-            }
-            
-            // Neuer Timer: 200ms warten nach dem letzten Input
-            debounceTimers[key] = setTimeout(() => {
-                sendCommand(cmdJson);
-                delete debounceTimers[key];
-            }, 200);
-        }
-        // ============ TELEMETRIE ============
-        function updateTelemetry(data) {
-            Object.assign(currentData, data);
-
-            // Karte updaten
-            map.setView([data.gps_lat || 46.8, data.gps_lon || 7.8], 16);
-            marker.setLatLng([data.gps_lat || 46.8, data.gps_lon || 7.8]);
-
-            // Horizont (Pitch + Roll)
-            const roll = data.roll_angle || 0;
-            const pitch = data.pitch_angle || 0;
-            document.getElementById('horizonNeedle').style.transform = 
-                `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
-
-            // Telemetrie-Anzeige
-            updateTelemDisplay('armed', data.armed, 1, '');
-            updateTelemDisplay('lat', data.gps_lat, 6, '°');
-            updateTelemDisplay('lon', data.gps_lon, 6, '°');
-            updateTelemDisplay('pitch', data.pitch, 0, '%');
-            updateTelemDisplay('roll', data.roll, 0, '%');
-            updateTelemDisplay('heading', data.heading, 1, '°');
-            updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
-            updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
-            updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
-            updateTelemDisplay('trim_pitch', data.trim_pitch, 0, '%');
-            updateTelemDisplay('trim_roll', data.trim_roll, 0, '%');
-            updateTelemDisplay('throttle', data.throttle, 0, '%');
-
-            // Parameter aus Daten
-            updateParameterDisplay(data);
-        }
-
-        function updateTelemDisplay(key, value, decimal, unit = '') {
-            const elem = document.getElementById('telem-' + key);
-            if (elem) {
-                elem.textContent = (typeof value === 'number') ? 
-                    value.toFixed(decimal) + unit : '--';
-            }
-        }
-
-        function updateParameterDisplay(data) {
-            const container = document.getElementById('controlsContainer');
-            if (container.children.length === 0) {
-                buildControlUI(data);
-            }
-        }
-
-        // ============ PARAMETER UI ============
-        function buildControlUI(data) {
-            const container = document.getElementById('controlsContainer');
+        // Render channel configuration UI
+        function renderChannelConfigs() {
+            const container = document.getElementById('channelConfigs');
             container.innerHTML = '';
+            
+            for (let ch = 0; ch < 8; ch++) {
+                const config = radioData.functionToChannel[ch] || {};
+                const html = `
+                    <div class="channel-config">
+                        <div class="channel-config-title">Kanal ${ch + 1}</div>
+                        <div class="channel-row">
+                            <select id="func_${ch}" onchange="updateChannelFunction(${ch}, this.value)">
+                                ${radioData.functionNames.map((name, idx) => 
+                                    `<option value="${idx}" ${config.func === idx ? 'selected' : ''}>${name}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="invert_${ch}" 
+                                ${config.invert ? 'checked' : ''} 
+                                onchange="updateChannelInvert(${ch}, this.checked)">
+                            <label for="invert_${ch}">Invertieren</label>
+                        </div>
+                        <div class="channel-row">
+                            <label>Ober:</label>
+                            <input type="number" id="upper_${ch}" value="${config.upper}" 
+                                onchange="updateChannelUpper(${ch}, this.value)" style="flex: 1;">
+                        </div>
+                        <div class="channel-row">
+                            <label>Unter:</label>
+                            <input type="number" id="lower_${ch}" value="${config.lower}" 
+                                onchange="updateChannelLower(${ch}, this.value)" style="flex: 1;">
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            }
+        }
 
-            const fields = [
-                { key: 'ddr_pitch', label: 'D/R Pitch [%]', type: 'range', min: 0, max: 100 },
-                { key: 'ddr_roll', label: 'D/R Roll [%]', type: 'range', min: 0, max: 100 },
-                { key: 'expo_pitch', label: 'Expo Pitch [%]', type: 'range', min: 0, max: 100 },
-                { key: 'expo_roll', label: 'Expo Roll [%]', type: 'range', min: 0, max: 100 },
-                { key: 'expo_throttle', label: 'Expo Throttle [%]', type: 'range', min: 0, max: 100 },
-                { key: 'throttle_to_pitch', label: 'Throttle → Pitch [%]', type: 'range', min: -100, max: 100 },
-                { key: 'throttle_max', label: 'Throttle max [V]', type: 'number', min: 0, max: 3.3 },
-                { key: 'throttle_min', label: 'Throttle min [V]', type: 'number', min: 0, max: 3.3 }
-            ];
+        // Render orientation selector
+        function renderOrientationSelector() {
+            const container = document.getElementById('orientationSelector');
+            container.innerHTML = radioData.orientationNames
+                .map((name, idx) => `
+                    <button class="orientation-btn ${radioData.orientation === idx ? 'active' : ''}" 
+                        onclick="updateOrientation(${idx})">
+                        ${name}
+                    </button>
+                `)
+                .join('');
+        }
 
-            fields.forEach(field => {
-                const group = document.createElement('div');
-                group.className = 'control-group';
+        // Tab switching
+        function switchTab(event, tabId) {
+            event.preventDefault();
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
 
-                const label = document.createElement('label');
-                label.textContent = field.label;
-                group.appendChild(label);
+        // Update functions for trim
+        function updateTrimPitch(value) {
+            document.getElementById('trimPitchDisplay').textContent = value + '%';
+            sendData({ trim_pitch: value });
+        }
 
-                if (field.type === 'number') {
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.min = field.min || 0;
-                    input.max = field.max || 100;
-                    input.step = '0.1';
-                    input.value = data[field.key] || 0;
-                    input.onchange = () => sendCommand({ [field.key]: parseFloat(input.value) });
-                    group.appendChild(input);
-                } else if (field.type === 'range') {
-                    const input = document.createElement('input');
-                    input.type = 'range';
-                    input.min = field.min || 0;
-                    input.max = field.max || 100;
-                    input.value = data[field.key] || 0;
-                    const valueSpan = document.createElement('span');
-                    valueSpan.textContent = input.value + '%';
-                    valueSpan.style.fontSize = '12px';
-                    valueSpan.style.marginTop = '4px';
-                    valueSpan.style.display = 'block';
-                    valueSpan.style.color = 'var(--muted)';
-                    
-                    // *** GEÄNDERT: Debounce statt direkter Send ***
-                    input.oninput = () => {
-                        valueSpan.textContent = input.value + '%';
-                        sendCommandDebounced({ [field.key]: parseFloat(input.value) }, field.key);
+        function updateTrimRoll(value) {
+            document.getElementById('trimRollDisplay').textContent = value + '%';
+            sendData({ trim_roll: value });
+        }
+
+        // Update functions for DDR
+        function updateDDRPitch(value) {
+            document.getElementById('ddrPitchDisplay').textContent = value + '%';
+            sendData({ ddr_pitch: value });
+        }
+
+        function updateDDRRoll(value) {
+            document.getElementById('ddrRollDisplay').textContent = value + '%';
+            sendData({ ddr_roll: value });
+        }
+
+        // Update functions for Expo
+        function updateExpoPitch(value) {
+            document.getElementById('expoPitchDisplay').textContent = value + '%';
+            sendData({ expo_pitch: value });
+        }
+
+        function updateExpoRoll(value) {
+            document.getElementById('expoRollDisplay').textContent = value + '%';
+            sendData({ expo_roll: value });
+        }
+
+        function updateExpoThrottle(value) {
+            document.getElementById('expoThrottleDisplay').textContent = value + '%';
+            sendData({ expo_throttle: value });
+        }
+
+        // Update Throttle to Pitch
+        function updateThrottleToPitch(value) {
+            document.getElementById('throttleToPitchDisplay').textContent = value + '%';
+            sendData({ throttle_to_pitch: value });
+        }
+
+        // Update throttle limits
+        function updateThrottleMin(value) {
+            sendData({ throttle_min: value });
+        }
+
+        function updateThrottleMax(value) {
+            sendData({ throttle_max: value });
+        }
+
+        // Channel functions
+        function updateChannelFunction(ch, value) {
+            if (!radioData.functionToChannel[ch]) radioData.functionToChannel[ch] = {};
+            radioData.functionToChannel[ch].func = parseInt(value);
+            sendChannelConfig(ch);
+        }
+
+        function updateChannelInvert(ch, checked) {
+            if (!radioData.functionToChannel[ch]) radioData.functionToChannel[ch] = {};
+            radioData.functionToChannel[ch].invert = checked;
+            sendChannelConfig(ch);
+        }
+
+        function updateChannelUpper(ch, value) {
+            if (!radioData.functionToChannel[ch]) radioData.functionToChannel[ch] = {};
+            radioData.functionToChannel[ch].upper = parseInt(value);
+            sendChannelConfig(ch);
+        }
+
+        function updateChannelLower(ch, value) {
+            if (!radioData.functionToChannel[ch]) radioData.functionToChannel[ch] = {};
+            radioData.functionToChannel[ch].lower = parseInt(value);
+            sendChannelConfig(ch);
+        }
+
+        // Model name
+        function updateModelName(value) {
+            sendData({ model_name: value });
+        }
+
+        // Orientation
+        function updateOrientation(idx) {
+            radioData.orientation = idx;
+            renderOrientationSelector();
+            sendData({ orientation: idx });
+        }
+
+        // Send channel config
+        function sendChannelConfig(ch) {
+            const ftc = {};
+            for (let i = 0; i < 8; i++) {
+                if (radioData.functionToChannel[i]) {
+                    const cfg = radioData.functionToChannel[i];
+                    ftc['ch' + i] = {
+                        invert: cfg.invert,
+                        func: cfg.func,
+                        upper: cfg.upper,
+                        lower: cfg.lower
                     };
-                    
-                    group.appendChild(input);
-                    group.appendChild(valueSpan);
                 }
-
-                container.appendChild(group);
-            });
+            }
+            sendData({ ftc: ftc });
         }
 
-        // ============ STATUS ============
-        function updateStatus(connected) {
-            const elem = document.getElementById('status');
-            document.getElementById('connectBtn').style.display = connected ? 'none' : 'block';
-            document.getElementById('disconnectBtn').style.display = connected ? 'block' : 'none';
-            document.getElementById('resetTrimBtn').style.display = connected ? 'block' : 'none';  // *** NEU ***
-            
-            if (connected) {
-                elem.textContent = '✓ Verbunden';
-                elem.className = 'status connected';
+        // Generic send data
+        function sendData(data) {
+            if (!characteristic) return;
+            const json = JSON.stringify(data);
+            const encoder = new TextEncoder();
+            characteristic.writeValue(encoder.encode(json));
+        }
+
+        // Save parameters
+        function saveParameters() {
+            sendData({ command: 'SAVE_PARAMS' });
+            alert('Parameter werden gespeichert...');
+        }
+
+        // Reset trim
+        function resetTrim() {
+            if (confirm('Trim wirklich zurücksetzen?')) {
+                sendData({ command: 'RESET_TRIM' });
+                document.getElementById('trimPitchSlider').value = 0;
+                document.getElementById('trimRollSlider').value = 0;
+                document.getElementById('trimPitchDisplay').textContent = '0%';
+                document.getElementById('trimRollDisplay').textContent = '0%';
+            }
+        }
+
+        // Update UI with received data
+        function updateUI(data) {
+            if (data.armed !== undefined) radioData.armed = data.armed;
+            if (data.gps_lat !== undefined) radioData.gpsLat = data.gps_lat;
+            if (data.gps_lon !== undefined) radioData.gpsLon = data.gps_lon;
+            if (data.gps_speed !== undefined) radioData.gpsSpeed = data.gps_speed;
+            if (data.gps_altitude !== undefined) radioData.gpsAltitude = data.gps_altitude;
+            if (data.gps_satellites !== undefined) radioData.gpsSatellites = data.gps_satellites;
+            if (data.pitch_angle !== undefined) radioData.pitchAngle = data.pitch_angle;
+            if (data.roll_angle !== undefined) radioData.rollAngle = data.roll_angle;
+            if (data.pitch !== undefined) radioData.funcPitch = data.pitch / 100;
+            if (data.roll !== undefined) radioData.funcRoll = data.roll / 100;
+            if (data.heading !== undefined) radioData.heading = data.heading;
+            if (data.tx_voltage !== undefined) radioData.txVoltage = data.tx_voltage;
+            if (data.rx_voltage !== undefined) radioData.rxVoltage = data.rx_voltage;
+            if (data.throttle_voltage !== undefined) radioData.throttleVoltage = data.throttle_voltage;
+            if (data.trim_pitch !== undefined) {
+                radioData.trimPitch = data.trim_pitch / 100;
+                document.getElementById('trimPitchSlider').value = data.trim_pitch / 100;
+                document.getElementById('trimPitchDisplay').textContent = Math.round(data.trim_pitch / 100) + '%';
+            }
+            if (data.trim_roll !== undefined) {
+                radioData.trimRoll = data.trim_roll / 100;
+                document.getElementById('trimRollSlider').value = data.trim_roll / 100;
+                document.getElementById('trimRollDisplay').textContent = Math.round(data.trim_roll / 100) + '%';
+            }
+            if (data.throttle !== undefined) radioData.throttle = data.throttle / 100;
+            if (data.ddr_pitch !== undefined) {
+                radioData.ddrPitch = data.ddr_pitch;
+                document.getElementById('ddrPitchSlider').value = data.ddr_pitch;
+                document.getElementById('ddrPitchDisplay').textContent = Math.round(data.ddr_pitch) + '%';
+            }
+            if (data.ddr_roll !== undefined) {
+                radioData.ddrRoll = data.ddr_roll;
+                document.getElementById('ddrRollSlider').value = data.ddr_roll;
+                document.getElementById('ddrRollDisplay').textContent = Math.round(data.ddr_roll) + '%';
+            }
+            if (data.expo_pitch !== undefined) {
+                radioData.expoPitch = data.expo_pitch;
+                document.getElementById('expoPitchSlider').value = data.expo_pitch;
+                document.getElementById('expoPitchDisplay').textContent = Math.round(data.expo_pitch) + '%';
+            }
+            if (data.expo_roll !== undefined) {
+                radioData.expoRoll = data.expo_roll;
+                document.getElementById('expoRollSlider').value = data.expo_roll;
+                document.getElementById('expoRollDisplay').textContent = Math.round(data.expo_roll) + '%';
+            }
+            if (data.expo_throttle !== undefined) {
+                radioData.expoThrottle = data.expo_throttle;
+                document.getElementById('expoThrottleSlider').value = data.expo_throttle;
+                document.getElementById('expoThrottleDisplay').textContent = Math.round(data.expo_throttle) + '%';
+            }
+            if (data.throttle_to_pitch !== undefined) {
+                radioData.throttleToPitch = data.throttle_to_pitch;
+                document.getElementById('throttleToPitchSlider').value = data.throttle_to_pitch;
+                document.getElementById('throttleToPitchDisplay').textContent = Math.round(data.throttle_to_pitch) + '%';
+            }
+            if (data.throttle_min !== undefined) {
+                radioData.throttleMin = data.throttle_min;
+                document.getElementById('throttleMinInput').value = data.throttle_min;
+            }
+            if (data.throttle_max !== undefined) {
+                radioData.throttleMax = data.throttle_max;
+                document.getElementById('throttleMaxInput').value = data.throttle_max;
+            }
+            if (data.model_name !== undefined) {
+                radioData.modelName = data.model_name;
+                document.getElementById('modelNameInput').value = data.model_name;
+                document.getElementById('modelName').textContent = 'Modell: ' + data.model_name;
+            }
+            if (data.orientation !== undefined) {
+                radioData.orientation = data.orientation;
+                renderOrientationSelector();
+            }
+            if (data.orientation_names) {
+                radioData.orientationNames = data.orientation_names;
+            }
+            if (data.func_names) {
+                radioData.functionNames = data.func_names;
+                renderChannelConfigs();
+            }
+            if (data.ftc) {
+                for (const key in data.ftc) {
+                    const ch = parseInt(key.replace('ch', ''));
+                    radioData.functionToChannel[ch] = data.ftc[key];
+                }
+                renderChannelConfigs();
+            }
+            if (data.channels) {
+                radioData.channels = data.channels;
+                renderChannels();
+            }
+            if (data.vtail_left !== undefined) radioData.vtailLeft = data.vtail_left / 100;
+            if (data.vtail_right !== undefined) radioData.vtailRight = data.vtail_right / 100;
+
+            renderDisplay();
+        }
+
+        function renderDisplay() {
+            // GPS
+            document.getElementById('gpsLat').textContent = radioData.gpsLat.toFixed(4);
+            document.getElementById('gpsLon').textContent = radioData.gpsLon.toFixed(4);
+            document.getElementById('gpsSpeed').textContent = radioData.gpsSpeed.toFixed(2);
+            document.getElementById('gpsAltitude').textContent = radioData.gpsAltitude.toFixed(2);
+            document.getElementById('gpsSatellites').textContent = radioData.gpsSatellites;
+
+            const gpsStatus = document.getElementById('gpsStatus');
+            if (radioData.gpsSatellites > 3) {
+                gpsStatus.classList.add('valid');
+                gpsStatus.classList.remove('invalid');
+                gpsStatus.innerHTML = '✅ GPS-Signal gültig (' + radioData.gpsSatellites + ' Sat.)';
             } else {
-                elem.textContent = '✗ Getrennt';
-                elem.className = 'status disconnected';
+                gpsStatus.classList.remove('valid');
+                gpsStatus.classList.add('invalid');
+                gpsStatus.innerHTML = '❌ Kein GPS-Signal';
+            }
+
+            // Attitude
+            document.getElementById('pitchAngle').textContent = radioData.pitchAngle.toFixed(1) + '°';
+            document.getElementById('rollAngle').textContent = radioData.rollAngle.toFixed(1) + '°';
+            document.getElementById('funcPitch').textContent = radioData.funcPitch.toFixed(0) + '%';
+            document.getElementById('funcRoll').textContent = radioData.funcRoll.toFixed(0) + '%';
+            document.getElementById('heading').textContent = radioData.heading.toFixed(0) + '°';
+            document.getElementById('armed').textContent = radioData.armed ? '✅' : '❌';
+
+            // V-Tail
+            document.getElementById('vtailLeft').textContent = radioData.vtailLeft.toFixed(0) + '%';
+            document.getElementById('vtailRight').textContent = radioData.vtailRight.toFixed(0) + '%';
+            document.getElementById('vtailLeftPercent').textContent = radioData.vtailLeft.toFixed(0) + '%';
+            document.getElementById('vtailRightPercent').textContent = radioData.vtailRight.toFixed(0) + '%';
+            updateMeterBar('vtailLeftBar', radioData.vtailLeft);
+            updateMeterBar('vtailRightBar', radioData.vtailRight);
+
+            // Power
+            document.getElementById('txVoltage').textContent = radioData.txVoltage.toFixed(1) + 'V';
+            document.getElementById('rxVoltage').textContent = radioData.rxVoltage.toFixed(1) + 'V';
+            document.getElementById('throttleVoltage').textContent = radioData.throttleVoltage.toFixed(1) + 'V';
+            updateMeterBar('txVoltageMeter', Math.min(radioData.txVoltage * 20, 100));
+            updateMeterBar('rxVoltageMeter', Math.min(radioData.rxVoltage * 20, 100));
+
+            // Throttle
+            document.getElementById('throttle').textContent = radioData.throttle.toFixed(0) + '%';
+            document.getElementById('throttlePercent').textContent = radioData.throttle.toFixed(0) + '%';
+            updateMeterBar('throttleMeter', radioData.throttle);
+
+            // Trim
+            document.getElementById('trimPitch').textContent = radioData.trimPitch.toFixed(0) + '%';
+            document.getElementById('trimRoll').textContent = radioData.trimRoll.toFixed(0) + '%';
+
+            // Orientation
+            document.getElementById('orientationValue').textContent = radioData.orientationNames[radioData.orientation] || 'UNKNOWN';
+        }
+
+        function updateMeterBar(elementId, percentage) {
+            const bar = document.getElementById(elementId);
+            if (bar) {
+                const clamped = Math.max(0, Math.min(100, percentage));
+                bar.style.width = clamped + '%';
+                bar.textContent = clamped.toFixed(0) + '%';
             }
         }
 
-
-        function addLog(msg) {
-            const log = document.getElementById('debugLog');
-            const timestamp = new Date().toLocaleTimeString();
-            log.innerHTML = `[${timestamp}] ${msg}<br>` + log.innerHTML;
-            if (log.children.length > 20) log.removeChild(log.lastChild);
+        function renderChannels() {
+            const container = document.getElementById('channelsDisplay');
+            container.innerHTML = radioData.channels.map((ch, idx) => `
+                <div style="background: #f0f4ff; padding: 12px; border-radius: 5px; text-align: center;">
+                    <div style="font-size: 12px; color: #999; margin-bottom: 4px;">Ch ${idx + 1}</div>
+                    <div style="font-size: 16px; font-weight: 600; color: #667eea;">${ch}</div>
+                    <div style="font-size: 10px; color: #999;">µs</div>
+                </div>
+            `).join('');
         }
 
-        // *** NEUE SAVE-FUNKTION ***
-        async function saveParams() {
-            if (!rxChar) { 
-                addLog("✗ Nicht verbunden!"); 
-                return; 
-            }
-            
-            try {
-                const cmd = { command: "SAVE_PARAMS" };
-                const jsonStr = JSON.stringify(cmd);
-                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
-                addLog("→ SAVE_PARAMS gesendet!");
-            } catch (error) {
-                addLog("✗ Save-Fehler: " + error.message);
+        // Connection status
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('statusIndicator');
+            if (connected) {
+                indicator.classList.add('connected');
+            } else {
+                indicator.classList.remove('connected');
             }
         }
 
-        // ============ INIT ============
-        function initMap() {
-            map = L.map('map').setView([46.8, 7.8], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap',
-                maxZoom: 19
-            }).addTo(map);
-            marker = L.marker([46.8, 7.8], { rotationAngle: 0 }).addTo(map);
-            marker.bindPopup('Modellflieger');
-            map.addControl(L.control.compass({ position: 'topright' }));
+        // Mock data for testing
+        function simulateData() {
+            updateUI({
+                armed: true,
+                gps_lat: 47.3245,
+                gps_lon: 8.5452,
+                gps_speed: 12.5,
+                gps_altitude: 850.25,
+                gps_satellites: 8,
+                pitch_angle: 5.2,
+                roll_angle: -2.1,
+                pitch: 2500,
+                roll: -1500,
+                heading: 125,
+                tx_voltage: 4.8,
+                rx_voltage: 5.1,
+                throttle_voltage: 5.0,
+                trim_pitch: 200,
+                trim_roll: -150,
+                throttle: 4500,
+                ddr_pitch: 8000,
+                ddr_roll: 8500,
+                expo_pitch: 1500,
+                expo_roll: 1200,
+                expo_throttle: 800,
+                throttle_to_pitch: 500,
+                throttle_min: 10,
+                throttle_max: 95,
+                model_name: "Test Plane",
+                orientation: 1,
+                vtail_left: 4000,
+                vtail_right: 3800,
+                channels: [992, 1000, 1050, 950, 992, 992, 992, 992, 992, 992, 992, 992, 992, 992, 992, 992],
+                func_names: ["NONE", "PITCH", "ROLL", "VTAIL_LEFT", "VTAIL_RIGHT", "THROTTLE"],
+                orientation_names: ["UNKNOWN", "T_UP", "T_LEFT", "T_RIGHT", "T_LEFT_DOWN", "T_LEFT_UP", "T_DOWN"],
+                ftc: {
+                    ch0: { invert: false, func: 1, upper: 1811, lower: 172 },
+                    ch1: { invert: false, func: 2, upper: 1811, lower: 172 },
+                    ch2: { invert: false, func: 3, upper: 1811, lower: 172 },
+                    ch3: { invert: false, func: 4, upper: 1811, lower: 172 },
+                    ch4: { invert: false, func: 6, upper: 1811, lower: 172 },
+                    ch5: { invert: false, func: 0, upper: 1811, lower: 172 },
+                    ch6: { invert: false, func: 0, upper: 1811, lower: 172 },
+                    ch7: { invert: false, func: 0, upper: 1811, lower: 172 }
+                }
+            });
+            updateConnectionStatus(true);
         }
 
-        window.addEventListener('load', () => {
-            initMap();
-            addLog("WebApp bereit. Klicke 'Verbinden'");
+        // Initialize
+        window.addEventListener('DOMContentLoaded', function() {
+            initializeChannelConfigs();
+            simulateData(); // Demo mode
         });
-
     </script>
 </body>
 </html>
