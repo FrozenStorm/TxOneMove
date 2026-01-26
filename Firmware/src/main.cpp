@@ -65,7 +65,6 @@ void setup() {
 
 /* -------------------- Main -----------------------------------------------------------------------------------*/
 void loop() { // Core 1
-
     xTaskDelayUntil(&lastWakeTime, loopDelay);
     analogToDigital.doFunction();
     sensorToDigital.doFunction();
@@ -77,5 +76,4 @@ void loop() { // Core 1
     functionToChannel.doFunction();
     transmitter.doFunction();
     bluetoothComm.doFunction();
-    // Serial.print(".");
 }
