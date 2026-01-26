@@ -63,6 +63,21 @@ void AnalogToDigital::doFunction()
 
     getButton(!digitalRead(PIN_ARM),changedTimeArmMs,radioData.digitalData.arm,radioData.digitalData.armEvent);
     getLongPress(radioData.digitalData.armLongPressEvent,startPressTimeArmMs,radioData.digitalData.arm,radioData.digitalData.armEvent);
+
+    // Battery Warning Logic
+    if(radioData.analogData.battery > radioData.analogToDigitalData.batteryWarningVoltage && (radioData.transmitterData.receiverBatteryVoltage > (2*radioData.analogToDigitalData.batteryWarningVoltage) || radioData.transmitterData.receiverBatteryVoltage == 0))
+    { // TODO Batterie Anzahl Erkennung einbauen
+        radioData.digitalData.batteryWarning = false;
+    }
+    else
+    {
+        static int slowDown = 0;
+        slowDown +=1;
+        if(slowDown % 10 == 0) 
+        {
+            radioData.digitalData.batteryWarning = !radioData.digitalData.batteryWarning;
+        }
+    }
 }
 
 void AnalogToDigital::getButton(const bool& value, unsigned int& changeTimeMs, bool& button, bool& buttonEvent)

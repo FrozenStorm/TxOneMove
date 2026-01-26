@@ -30,6 +30,10 @@ private:
     void selectAxis();
     void initGps();
     void initBNO055();
+    int feebackDirectionPitch = 0;
+    int feebackDirectionRoll = 0;
+    unsigned long vibrationTimer = 0;
+    void updateFeedback(int& direction, float digitalValue, float upperLimit, float lowerLimit);
 public:
     SensorToDigital(RadioData& newRadioData):RadioClass(newRadioData){}
     void doFunction();
@@ -143,6 +147,17 @@ void SensorToDigital::doFunction()
         // Serial.println("Fehler: Pitch oder Roll ist NaN!");
         return;
     }
+
+    updateFeedback(feebackDirectionPitch, radioData.digitalData.pitch, radioData.sensorToDigitalData.feebackUpperLimitPitch, radioData.sensorToDigitalData.feebackLowerLimitPitch);
+    updateFeedback(feebackDirectionRoll, radioData.digitalData.roll, radioData.sensorToDigitalData.feebackUpperLimitRoll, radioData.sensorToDigitalData.feebackLowerLimitRoll);
+    if(micros() < vibrationTimer)
+    {
+        radioData.digitalData.feedbackVibration = true;
+    }
+    else
+    {
+        radioData.digitalData.feedbackVibration = false;
+    }
 }
 
 void SensorToDigital::selectAxis()
@@ -249,4 +264,44 @@ float SensorToDigital::analogToDigital(float value, const RadioData::SensorToDig
     // Limitieren auf digital Bereich
     limitValue(value);
     return value;
+}
+
+void SensorToDigital::updateFeedback(int& direction, float digitalValue, float upperLimit, float lowerLimit)
+{
+    if(direction == 0)
+    {
+        if(digitalValue > upperLimit)
+        {
+            direction = 1;
+        }
+        else if(digitalValue < -upperLimit)
+        {
+            direction = -1;
+        }
+    }
+    else
+    {
+        if(direction == 1)
+        {
+            if(digitalValue < lowerLimit)
+            {
+                direction = 0;
+                if(radioData.functionData.armed == true)
+                {
+                    vibrationTimer = micros() + radioData.sensorToDigitalData.feebackDurationUs;
+                }
+            }
+        }
+        else
+        {
+            if(digitalValue > -lowerLimit)
+            {
+                direction = 0;
+                if(radioData.functionData.armed == true)
+                {
+                    vibrationTimer = micros() + radioData.sensorToDigitalData.feebackDurationUs;
+                }
+            }
+        }
+    }
 }

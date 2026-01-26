@@ -33,6 +33,7 @@ public:
             float max;
         };
         ThrottleLimit throttleLimit;
+        float batteryWarningVoltage;
     };
     AnalogToDigitalData analogToDigitalData;
 
@@ -43,6 +44,11 @@ public:
         };
         AngleLimit angleLimitPitch;
         AngleLimit angleLimitRoll;
+        float feebackUpperLimitPitch;
+        float feebackLowerLimitPitch;
+        float feebackUpperLimitRoll;
+        float feebackLowerLimitRoll;
+        unsigned long feebackDurationUs;
     };
     SensorToDigitalData sensorToDigitalData;
     
@@ -135,6 +141,9 @@ public:
         double gpsSpeedKmph = 0;
         double gpsAltitudeMeters = 0;
         int    gpsSatellites = 0;
+
+        bool feedbackVibration = 0;
+        bool batteryWarning = 0;
     };
     DigitalData digitalData;
 
@@ -221,9 +230,17 @@ void RadioData::storeGlobalData()
     pref.putInt("atdd.lpdm", analogToDigitalData.longPressDurationMs);
     pref.putFloat("atdd.tl.min", analogToDigitalData.throttleLimit.min);
     pref.putFloat("atdd.tl.max", analogToDigitalData.throttleLimit.max);
+    pref.putFloat("atdd.bwv", analogToDigitalData.batteryWarningVoltage);
 
     pref.putFloat("stdd.alp.d", sensorToDigitalData.angleLimitPitch.delta);
     pref.putFloat("stdd.alr.d", sensorToDigitalData.angleLimitRoll.delta);
+
+    pref.putFloat("stdd.fulp", sensorToDigitalData.feebackUpperLimitPitch);
+    pref.putFloat("stdd.fllp", sensorToDigitalData.feebackLowerLimitPitch);
+    pref.putFloat("stdd.fulr", sensorToDigitalData.feebackUpperLimitRoll);
+    pref.putFloat("stdd.fllr", sensorToDigitalData.feebackLowerLimitRoll);
+
+    pref.putULong("stdd.fdu", sensorToDigitalData.feebackDurationUs);
 
     Serial.printf("Global entries left = %u\n", pref.freeEntries());
     pref.end();
@@ -301,9 +318,17 @@ void RadioData::loadGlobalData()
     analogToDigitalData.longPressDurationMs = pref.getInt("atdd.lpdm", 600);
     analogToDigitalData.throttleLimit.min = pref.getFloat("atdd.tl.min", 1.8);
     analogToDigitalData.throttleLimit.max = pref.getFloat("atdd.tl.max", 2.3);
+    analogToDigitalData.batteryWarningVoltage = pref.getFloat("atdd.bwv", 3.5);
 
-    sensorToDigitalData.angleLimitPitch.delta = pref.getInt("stdd.alp.d",45);
-    sensorToDigitalData.angleLimitRoll.delta = pref.getInt("stdd.alr.d",45);
+    sensorToDigitalData.angleLimitPitch.delta = pref.getInt("stdd.alp.d", 45);
+    sensorToDigitalData.angleLimitRoll.delta = pref.getInt("stdd.alr.d", 45);
+
+    sensorToDigitalData.feebackUpperLimitPitch = pref.getFloat("stdd.fulp", 0.3);
+    sensorToDigitalData.feebackLowerLimitPitch = pref.getFloat("stdd.fllp", 0.02);
+    sensorToDigitalData.feebackUpperLimitRoll = pref.getFloat("stdd.fulr", 0.6);
+    sensorToDigitalData.feebackLowerLimitRoll = pref.getFloat("stdd.fllr", 0.05);
+
+    sensorToDigitalData.feebackDurationUs = pref.getULong("stdd.fdu", 100000);
     pref.end();
 }
 
