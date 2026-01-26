@@ -141,6 +141,7 @@ public:
         double gpsSpeedKmph = 0;
         double gpsAltitudeMeters = 0;
         int    gpsSatellites = 0;
+        double gpsHdop = 0;
 
         bool feedbackVibration = 0;
         bool batteryWarning = 0;

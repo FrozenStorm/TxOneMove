@@ -113,11 +113,14 @@ void BluetoothComm::doFunction()
     doc["armed"] = radioData.functionData.armed ? 1 : 0;
     doc["gps_lat"] = radioData.digitalData.gpsLatitude;
     doc["gps_lon"] = radioData.digitalData.gpsLongitude;
+    doc["gps_hdop"] = radioData.digitalData.gpsHdop;
+    doc["gps_altitude"] = radioData.digitalData.gpsAltitudeMeters;
+    doc["gps_satellites"] = radioData.digitalData.gpsSatellites;
     doc["pitch_angle"] = radioData.analogData.pitch;
     doc["roll_angle"] = radioData.analogData.roll;
     doc["pitch"] = radioData.functionData.pitch * 100;
     doc["roll"] = radioData.functionData.roll * 100;
-    doc["heading"] = radioData.dualRateData.pitch;
+    doc["heading"] = 0;
     doc["tx_voltage"] = radioData.analogData.battery;
     doc["rx_voltage"] = radioData.transmitterData.receiverBatteryVoltage;
     doc["throttle_voltage"] = radioData.analogData.throttle;

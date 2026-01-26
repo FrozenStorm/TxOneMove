@@ -126,7 +126,7 @@
         border: 1px solid var(--border);
         }
 
-        /* Leaflet Controls leicht „dunkler“ */
+        /* Leaflet Controls leicht „dunkler" */
         .leaflet-control, .leaflet-bar a{
         background: rgba(10,16,28,.75) !important;
         color: var(--text) !important;
@@ -268,6 +268,13 @@
         margin: 14px 0 0 0;
         }
 
+        .telemetry-grid-single{
+        display:grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin: 14px 0 0 0;
+        }
+
         .telemetry-item{
         background: rgba(255,255,255,.04);
         border: 1px solid rgba(255,255,255,.12);
@@ -325,7 +332,6 @@
         padding: 10px !important;
         color: rgba(255,255,255,.86);
         }
-
     </style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><circle cx='96' cy='96' r='90' fill='%232196F3'/><path d='M96,40 L130,140 L96,110 L62,140 Z' fill='white'/></svg>">
 </head>
@@ -351,30 +357,13 @@
             </button>
         </div>
 
-
-        <!-- Karte und Heading -->
+        <!-- Karte und Position & Heading -->
         <div class="panel">
             <h2>🗺️ Position & Heading</h2>
             <div id="map"></div>
             <div class="heading-arrow" id="headingArrow"></div>
-        </div>
-
-        <!-- Telemetrie-Anzeige -->
-        <div class="panel">
-            <h2>📊 Telemetrie</h2>
-            <div class="telemetry-grid" id="telemetryGrid">
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Armed</div>
-                    <div class="telemetry-value" id="telem-armed">--</div>
-                </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Tx Spannung</div>
-                    <div class="telemetry-value" id="telem-tx_voltage">--</div>
-                </div>
-                <div class="telemetry-item">
-                    <div class="telemetry-label">Rx Spannung</div>
-                    <div class="telemetry-value" id="telem-rx_voltage">--</div>
-                </div>
+            <!-- Position Telemetrie direkt unter Karte -->
+            <div class="telemetry-grid" style="margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                 <div class="telemetry-item">
                     <div class="telemetry-label">Breitengrad</div>
                     <div class="telemetry-value" id="telem-lat">--</div>
@@ -386,6 +375,37 @@
                 <div class="telemetry-item">
                     <div class="telemetry-label">Heading</div>
                     <div class="telemetry-value" id="telem-heading">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">HDOP</div>
+                    <div class="telemetry-value" id="telem-hdop">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Satellites</div>
+                    <div class="telemetry-value" id="telem-satellites">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Altitude</div>
+                    <div class="telemetry-value" id="telem-altitude">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tx Data -->
+        <div class="panel">
+            <h2>📡 Tx Data</h2>
+            <div class="telemetry-grid" id="txDataGrid">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Armed</div>
+                    <div class="telemetry-value" id="telem-armed">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Tx Spannung</div>
+                    <div class="telemetry-value" id="telem-tx_voltage">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Throttle</div>
+                    <div class="telemetry-value" id="telem-throttle_voltage">--</div>
                 </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Pitch</div>
@@ -407,9 +427,16 @@
                     <div class="telemetry-label">Trim Roll</div>
                     <div class="telemetry-value" id="telem-trim_roll">--</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- NEUER RX Telemetry Bereich -->
+        <div class="panel">
+            <h2>📶 RX Telemetry</h2>
+            <div class="telemetry-grid-single">
                 <div class="telemetry-item">
-                    <div class="telemetry-label">Throttle</div>
-                    <div class="telemetry-value" id="telem-throttle_voltage">--</div>
+                    <div class="telemetry-label">Rx Spannung</div>
+                    <div class="telemetry-value" id="telem-rx_voltage">--</div>
                 </div>
             </div>
         </div>
@@ -500,7 +527,6 @@
                 updateStatus(true);
                 addLog("✓ Verbunden!");
                 
-                
             } catch (error) {
                 addLog("✗ Fehler: " + error.message);
             }
@@ -518,7 +544,6 @@
             }
         }
 
-        // *** NEUE REFRESH-FUNKTION ***
         // *** NEUE RESET_TRIM-FUNKTION ***
         async function resetTrim() {
             if (!rxChar) { 
@@ -598,6 +623,7 @@
                 delete debounceTimers[key];
             }, 200);
         }
+
         // ============ TELEMETRIE ============
         function updateTelemetry(data) {
             Object.assign(currentData, data);
@@ -612,19 +638,26 @@
             document.getElementById('horizonNeedle').style.transform = 
                 `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
 
-            // Telemetrie-Anzeige
+            // Tx Data
             updateTelemDisplay('armed', data.armed, 1, '');
-            updateTelemDisplay('lat', data.gps_lat, 6, '°');
-            updateTelemDisplay('lon', data.gps_lon, 6, '°');
+            updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
+            updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
             updateTelemDisplay('pitch', data.pitch, 0, '%');
             updateTelemDisplay('roll', data.roll, 0, '%');
-            updateTelemDisplay('heading', data.heading, 1, '°');
-            updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
-            updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
-            updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
+            updateTelemDisplay('throttle', data.throttle, 0, '%');
             updateTelemDisplay('trim_pitch', data.trim_pitch, 0, '%');
             updateTelemDisplay('trim_roll', data.trim_roll, 0, '%');
-            updateTelemDisplay('throttle', data.throttle, 0, '%');
+
+            // Position & Heading
+            updateTelemDisplay('lat', data.gps_lat, 6, '°');
+            updateTelemDisplay('lon', data.gps_lon, 6, '°');
+            updateTelemDisplay('heading', data.heading, 1, '°');
+            updateTelemDisplay('hdop', data.gps_hdop, 2, '');
+            updateTelemDisplay('satellites', data.gps_satellites, 0, '');
+            updateTelemDisplay('altitude', data.gps_altitude, 1, 'm');
+
+            // RX Telemetry (neuer Bereich)
+            updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
 
             // Parameter aus Daten
             updateParameterDisplay(data);
@@ -691,7 +724,6 @@
                     valueSpan.style.display = 'block';
                     valueSpan.style.color = 'var(--muted)';
                     
-                    // *** GEÄNDERT: Debounce statt direkter Send ***
                     input.oninput = () => {
                         valueSpan.textContent = input.value + '%';
                         sendCommandDebounced({ [field.key]: parseFloat(input.value) }, field.key);
@@ -710,7 +742,7 @@
             const elem = document.getElementById('status');
             document.getElementById('connectBtn').style.display = connected ? 'none' : 'block';
             document.getElementById('disconnectBtn').style.display = connected ? 'block' : 'none';
-            document.getElementById('resetTrimBtn').style.display = connected ? 'block' : 'none';  // *** NEU ***
+            document.getElementById('resetTrimBtn').style.display = connected ? 'block' : 'none';
             
             if (connected) {
                 elem.textContent = '✓ Verbunden';
@@ -720,7 +752,6 @@
                 elem.className = 'status disconnected';
             }
         }
-
 
         function addLog(msg) {
             const log = document.getElementById('debugLog');
