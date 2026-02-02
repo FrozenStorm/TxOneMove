@@ -16,25 +16,19 @@
         --surface:rgba(255,255,255,.06);
         --surface-2:rgba(255,255,255,.09);
         --border:rgba(255,255,255,.12);
-
         --text:rgba(255,255,255,.92);
         --muted:rgba(255,255,255,.62);
-
-        --accent:#FF5A2A;     /* Hauptakzent (Buttons/Highlights) */
-        --accent-2:#00D4FF;   /* Sekundärakzent (Focus/Details) */
-
+        --accent:#FF5A2A;
+        --accent-2:#00D4FF;
         --success:#27D17C;
         --danger:#FF4D4F;
-
         --shadow: 0 18px 40px rgba(0,0,0,.45);
         --radius:14px;
         --radius-sm:12px;
-
         --focus: 0 0 0 3px rgba(0,212,255,.22);
         }
 
         *{ box-sizing:border-box; }
-
         html, body{ height:100%; }
 
         body{
@@ -47,7 +41,6 @@
             linear-gradient(180deg, var(--bg0), var(--bg1));
         }
 
-        /* Topbar */
         .topbar{
         position: sticky;
         top: 0;
@@ -64,6 +57,7 @@
         display:flex;
         align-items:center;
         gap:12px;
+        justify-content: space-between;
         }
 
         .brand-mark{
@@ -85,7 +79,45 @@
         margin-top: 2px;
         }
 
-        /* Layout */
+        /* Audio Controls */
+        .audio-controls{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        }
+
+        .audio-btn{
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(255,255,255,.08);
+        color: var(--text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all .2s ease;
+        }
+
+        .audio-btn:hover{
+        background: rgba(255,255,255,.12);
+        filter: brightness(1.1);
+        }
+
+        .audio-btn.playing{
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border-color: rgba(255,255,255,.2);
+        }
+
+        .volume-slider{
+        width: 80px;
+        height: 24px;
+        accent-color: var(--accent);
+        cursor: pointer;
+        }
+
         .container{
         display:grid;
         grid-template-columns: 1fr 1fr;
@@ -99,7 +131,6 @@
         .container{ grid-template-columns:1fr; }
         }
 
-        /* Panels */
         .panel{
         background: var(--surface);
         border: 1px solid var(--border);
@@ -118,7 +149,6 @@
         font-weight: 800;
         }
 
-        /* Map */
         #map{
         height: 420px;
         border-radius: var(--radius-sm);
@@ -126,7 +156,6 @@
         border: 1px solid var(--border);
         }
 
-        /* Leaflet Controls leicht „dunkler" */
         .leaflet-control, .leaflet-bar a{
         background: rgba(10,16,28,.75) !important;
         color: var(--text) !important;
@@ -136,7 +165,6 @@
         background: rgba(10,16,28,.8);
         }
 
-        /* Horizon */
         .horizon{
         height: 220px;
         border-radius: var(--radius-sm);
@@ -179,7 +207,6 @@
         box-shadow: 0 0 0 1px rgba(0,0,0,.35);
         }
 
-        /* Controls / Inputs */
         .controls{ display:flex; flex-direction:column; gap: 12px; }
 
         .control-group{
@@ -214,14 +241,12 @@
         border-color: rgba(0,212,255,.45);
         }
 
-        /* Range */
         input[type="range"]{
         width: 100%;
         cursor: pointer;
         accent-color: var(--accent);
         }
 
-        /* Buttons */
         button{
         padding: 11px 14px;
         border: 1px solid rgba(255,255,255,.12);
@@ -238,7 +263,6 @@
         button:active{ transform: translateY(0px); }
         button:disabled{ opacity: .5; cursor: not-allowed; transform:none; }
 
-        /* Status */
         .status{
         padding: 12px;
         border-radius: 12px;
@@ -260,7 +284,6 @@
         color: var(--danger);
         }
 
-        /* Telemetry */
         .telemetry-grid{
         display:grid;
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -307,7 +330,6 @@
         color: rgba(255,255,255,.95);
         }
 
-        /* Heading Arrow */
         .heading-arrow{
         position:absolute;
         width:0;
@@ -315,14 +337,13 @@
         border-left: 14px solid transparent;
         border-right: 14px solid transparent;
         border-bottom: 28px solid var(--accent);
-        top: 64px;              /* wirkt mit Topbar harmonischer */
+        top: 64px;
         left: 50%;
         transform: translateX(-50%);
         filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
         transition: transform .08s linear;
         }
 
-        /* Log */
         #debugLog{
         height: 200px;
         overflow-y: auto;
@@ -336,15 +357,28 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><circle cx='96' cy='96' r='90' fill='%232196F3'/><path d='M96,40 L130,140 L96,110 L62,140 Z' fill='white'/></svg>">
 </head>
 <body>
+    <!-- *** AUDIO ELEMENT (versteckt) *** -->
+    <audio id="bgAudio" loop style="display:none;">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+
     <header class="topbar">
         <div class="brand">
-        <div class="brand-mark"></div>
-            <div class="brand-text">
-                <div class="brand-title">TxOneMove</div>
-                <div class="brand-sub">Telemetry • BLE • Map</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="brand-mark"></div>
+                <div class="brand-text">
+                    <div class="brand-title">TxOneMove</div>
+                    <div class="brand-sub">Telemetry • BLE • Map</div>
+                </div>
+            </div>
+            <!-- *** AUDIO CONTROLS IN TOPBAR *** -->
+            <div class="audio-controls">
+                <button class="audio-btn" id="audioPlayBtn" onclick="toggleAudio()" title="Audio abspielen/pausieren">🔊</button>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="30" onchange="setVolume()" title="Lautstärke">
             </div>
         </div>
     </header>
+
     <div class="container">
         <!-- Verbindung und Status -->
         <div class="panel">
@@ -362,7 +396,6 @@
             <h2>🗺️ Position & Heading</h2>
             <div id="map"></div>
             <div class="heading-arrow" id="headingArrow"></div>
-            <!-- Position Telemetrie direkt unter Karte -->
             <div class="telemetry-grid" style="margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                 <div class="telemetry-item">
                     <div class="telemetry-label">Breitengrad</div>
@@ -430,7 +463,7 @@
             </div>
         </div>
 
-        <!-- NEUER RX Telemetry Bereich -->
+        <!-- RX Telemetry -->
         <div class="panel">
             <h2>📶 RX Telemetry</h2>
             <div class="telemetry-grid-single">
@@ -441,7 +474,7 @@
             </div>
         </div>
 
-        <!-- Horizont (künstlicher Horizont) -->
+        <!-- Horizont -->
         <div class="panel">
             <h2>🎯 Horizont</h2>
             <div class="horizon">
@@ -455,10 +488,7 @@
         <!-- Parameter-Kontrollen -->
         <div class="panel">
             <h2>⚙️ Parameter</h2>
-            <div class="controls" id="controlsContainer">
-                <!-- Dynamisch gefüllt -->
-            </div>
-            <!-- NEUER SAVE-KNOPF HIER -->
+            <div class="controls" id="controlsContainer"></div>
             <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
                 <button onclick="saveParams()" style="width: 100%; background: linear-gradient(135deg, var(--success), rgba(39,209,124,.7));">
                 💾 Save
@@ -469,13 +499,72 @@
         <!-- Debug-Log -->
         <div class="panel">
             <h2>📝 Log</h2>
-            <div style="height: 200px; overflow-y: auto; background: #f9f9f9; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 12px;" id="debugLog">
+            <div id="debugLog" style="height: 200px; overflow-y: auto; background: rgba(10,16,28,.55); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 10px; color: rgba(255,255,255,.86);">
                 Bereit...
             </div>
         </div>
     </div>
 
     <script>
+        // ============ AUDIO MANAGEMENT ============
+        let audioContext = null;
+        let wakeLock = null;
+
+        async function toggleAudio() {
+            const audio = document.getElementById('bgAudio');
+            const btn = document.getElementById('audioPlayBtn');
+            
+            if (audio.paused) {
+                try {
+                    await audio.play();
+                    btn.classList.add('playing');
+                    addLog('🔊 Audio gestartet');
+                    requestWakeLock(); // Aktiviere Wake Lock für Hintergrund-Playback
+                } catch (error) {
+                    addLog('✗ Audio-Fehler: ' + error.message);
+                }
+            } else {
+                audio.pause();
+                btn.classList.remove('playing');
+                addLog('⏸️ Audio pausiert');
+                releaseWakeLock();
+            }
+        }
+
+        function setVolume() {
+            const slider = document.getElementById('volumeSlider');
+            const audio = document.getElementById('bgAudio');
+            audio.volume = parseFloat(slider.value) / 100;
+            addLog('🔊 Lautstärke: ' + slider.value + '%');
+        }
+
+        // *** SCREEN WAKE LOCK - für Hintergrund-Audio auf Android ***
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator && !wakeLock) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        addLog('⚠️ Wake Lock freigegeben');
+                    });
+                    addLog('✓ Wake Lock aktiviert (Audio läuft im Hintergrund)');
+                }
+            } catch (error) {
+                addLog('⚠️ Wake Lock nicht verfügbar: ' + error.message);
+            }
+        }
+
+        async function releaseWakeLock() {
+            try {
+                if (wakeLock) {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    addLog('⚠️ Wake Lock freigegeben');
+                }
+            } catch (error) {
+                addLog('✗ Wake Lock-Fehler: ' + error.message);
+            }
+        }
+
         // ============ STATE ============
         let bleDevice = null;
         let txChar = null;
@@ -526,7 +615,6 @@
 
                 updateStatus(true);
                 addLog("✓ Verbunden!");
-                
             } catch (error) {
                 addLog("✗ Fehler: " + error.message);
             }
@@ -537,20 +625,16 @@
                 await bleDevice.gatt.disconnect();
                 updateStatus(false);
                 addLog("Getrennt");
-                
-                // *** NEU: Parameter-Felder löschen ***
                 const container = document.getElementById('controlsContainer');
                 container.innerHTML = '';
             }
         }
 
-        // *** NEUE RESET_TRIM-FUNKTION ***
         async function resetTrim() {
             if (!rxChar) { 
                 addLog("✗ Nicht verbunden!"); 
                 return; 
             }
-            
             try {
                 const cmd = { command: "RESET_TRIM" };
                 const jsonStr = JSON.stringify(cmd);
@@ -571,18 +655,14 @@
             }
         }
 
-        // ============ COMMAND QUEUE & DEBOUNCE ============
+        // ============ COMMAND QUEUE ============
         let commandQueue = [];
         let isSending = false;
         let debounceTimers = {};
 
         async function sendCommand(cmdJson) {
             if (!rxChar) { alert("Nicht verbunden!"); return; }
-            
-            // In Queue hinzufügen
             commandQueue.push(cmdJson);
-            
-            // Sofort verarbeiten wenn nichts läuft
             if (!isSending) {
                 processCommandQueue();
             }
@@ -590,10 +670,8 @@
 
         async function processCommandQueue() {
             if (commandQueue.length === 0 || isSending) return;
-            
             isSending = true;
             const cmd = commandQueue.shift();
-            
             try {
                 const jsonStr = JSON.stringify(cmd);
                 await rxChar.writeValue(new TextEncoder().encode(jsonStr));
@@ -601,23 +679,16 @@
             } catch (error) {
                 addLog("✗ Send-Fehler: " + error.message);
             }
-            
             isSending = false;
-            
-            // Nächsten Command verarbeiten (mit kleiner Verzögerung)
             if (commandQueue.length > 0) {
                 setTimeout(processCommandQueue, 50);
             }
         }
 
-        // *** DEBOUNCE FÜR RANGE-INPUTS ***
         function sendCommandDebounced(cmdJson, key) {
-            // Alten Timer löschen falls vorhanden
             if (debounceTimers[key]) {
                 clearTimeout(debounceTimers[key]);
             }
-            
-            // Neuer Timer: 200ms warten nach dem letzten Input
             debounceTimers[key] = setTimeout(() => {
                 sendCommand(cmdJson);
                 delete debounceTimers[key];
@@ -627,18 +698,13 @@
         // ============ TELEMETRIE ============
         function updateTelemetry(data) {
             Object.assign(currentData, data);
-
-            // Karte updaten
             map.setView([data.gps_lat || 46.8, data.gps_lon || 7.8], 16);
             marker.setLatLng([data.gps_lat || 46.8, data.gps_lon || 7.8]);
-
-            // Horizont (Pitch + Roll)
             const roll = data.roll_angle || 0;
             const pitch = data.pitch_angle || 0;
             document.getElementById('horizonNeedle').style.transform = 
                 `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
 
-            // Tx Data
             updateTelemDisplay('armed', data.armed, 1, '');
             updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
             updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
@@ -647,19 +713,13 @@
             updateTelemDisplay('throttle', data.throttle, 0, '%');
             updateTelemDisplay('trim_pitch', data.trim_pitch, 0, '%');
             updateTelemDisplay('trim_roll', data.trim_roll, 0, '%');
-
-            // Position & Heading
             updateTelemDisplay('lat', data.gps_lat, 6, '°');
             updateTelemDisplay('lon', data.gps_lon, 6, '°');
             updateTelemDisplay('heading', data.heading, 1, '°');
             updateTelemDisplay('hdop', data.gps_hdop, 2, '');
             updateTelemDisplay('satellites', data.gps_satellites, 0, '');
             updateTelemDisplay('altitude', data.gps_altitude, 1, 'm');
-
-            // RX Telemetry (neuer Bereich)
             updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
-
-            // Parameter aus Daten
             updateParameterDisplay(data);
         }
 
@@ -697,7 +757,6 @@
             fields.forEach(field => {
                 const group = document.createElement('div');
                 group.className = 'control-group';
-
                 const label = document.createElement('label');
                 label.textContent = field.label;
                 group.appendChild(label);
@@ -728,11 +787,9 @@
                         valueSpan.textContent = input.value + '%';
                         sendCommandDebounced({ [field.key]: parseFloat(input.value) }, field.key);
                     };
-                    
                     group.appendChild(input);
                     group.appendChild(valueSpan);
                 }
-
                 container.appendChild(group);
             });
         }
@@ -760,13 +817,11 @@
             if (log.children.length > 20) log.removeChild(log.lastChild);
         }
 
-        // *** NEUE SAVE-FUNKTION ***
         async function saveParams() {
             if (!rxChar) { 
                 addLog("✗ Nicht verbunden!"); 
                 return; 
             }
-            
             try {
                 const cmd = { command: "SAVE_PARAMS" };
                 const jsonStr = JSON.stringify(cmd);
@@ -792,8 +847,16 @@
         window.addEventListener('load', () => {
             initMap();
             addLog("WebApp bereit. Klicke 'Verbinden'");
+            setVolume(); // Initiale Lautstärke setzen
         });
 
+        // Beim Wechsel zu Hintergrund (optional)
+        document.addEventListener('visibilitychange', () => {
+            const audio = document.getElementById('bgAudio');
+            if (!document.hidden && audio.paused) {
+                // Seite wird sichtbar
+            }
+        });
     </script>
 </body>
 </html>
