@@ -177,6 +177,23 @@
         background: rgba(10,16,28,.8);
         }
 
+        .arrow-marker {
+            transform-origin: 14px 36px;  /* Rotation um die Spitze */
+            transition: transform 0.1s ease-out;  /* Sanfte Drehung */
+        }
+
+        .arrow-marker-inner {
+            /* Inneres Element: HIER rotiert sich der Pfeil */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease-out;
+        }
+
+        .arrow-marker svg {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,.3));
+        }
+
         .horizon{
         height: 220px;
         border-radius: var(--radius-sm);
@@ -881,6 +898,17 @@
             
             map.setView([data.gps_lat || 46.8, data.gps_lon || 7.8], 16);
             marker.setLatLng([data.gps_lat || 46.8, data.gps_lon || 7.8]);
+
+            // Pfeil rotieren - das INNERE Element drehen
+            const heading = data.heading || 0;
+            const iconElement = marker.getElement();
+            if (iconElement) {
+                const innerDiv = iconElement.querySelector('.arrow-marker-inner');
+                if (innerDiv) {
+                    innerDiv.style.transform = `rotate(${heading}deg)`;
+                }
+            }
+
             const roll = data.roll_angle || 0;
             const pitch = data.pitch_angle || 0;
             document.getElementById('horizonNeedle').style.transform = 
@@ -1024,10 +1052,28 @@
                 attribution: '© OpenStreetMap',
                 maxZoom: 19
             }).addTo(map);
-            marker = L.marker([46.8, 7.8], { rotationAngle: 0 }).addTo(map);
-            marker.bindPopup('Modellflieger');
+            marker = L.marker([46.8, 7.8], { 
+                icon: arrowIcon, 
+                rotationAngle: 0  // Initial 0°
+            }).addTo(map);
+            marker.bindPopup('TxOneMove');
             map.addControl(L.control.compass({ position: 'topright' }));
         }
+
+        // Pfeil-Icon als SVG (rotierbar, hellorange passend zum Design)
+        const arrowIcon = L.divIcon({
+            className: 'arrow-marker',
+            html: `
+                <div class="arrow-marker-inner" style="transform: rotate(0deg);">
+                    <svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 0 L2 28 L14 20 L26 28 Z" fill="var(--accent)" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+                    </svg>
+                </div>
+            `,
+            iconSize: [28, 36],
+            iconAnchor: [14, 18],  // Mitte des Pfeils (nicht Spitze!)
+            popupAnchor: [0, -18]
+        });
 
         window.addEventListener('load', () => {
             initMap();

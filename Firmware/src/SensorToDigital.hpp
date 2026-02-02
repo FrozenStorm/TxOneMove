@@ -96,7 +96,7 @@ void SensorToDigital::begin()
 
 void SensorToDigital::doFunction()
 {
-    // TODO: GPS Daten verarbeiten
+    // GPS Einlesen
     while(Serial2.available() > 0)
     {
         char read = Serial2.read();
@@ -128,6 +128,11 @@ void SensorToDigital::doFunction()
     radioData.rawData.gravityY = gravity.y();
     radioData.rawData.gravityZ = gravity.z();
 
+    imu::Vector<3> mag = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+    radioData.rawData.magX = mag.x();
+    radioData.rawData.magY = mag.y();
+    radioData.rawData.magZ = mag.z();    
+
     updateOrientation();
     selectAxis();
 
@@ -146,6 +151,8 @@ void SensorToDigital::doFunction()
         // Serial.println("Fehler: Pitch oder Roll ist NaN!");
         return;
     }
+
+    radioData.digitalData.heading = atan2(radioData.analogData.magRight, radioData.analogData.magFront) * (180.0 / M_PI);
 
     updateFeedback(feebackDirectionPitch, radioData.digitalData.pitch, radioData.sensorToDigitalData.feebackUpperLimitPitch, radioData.sensorToDigitalData.feebackLowerLimitPitch);
     updateFeedback(feebackDirectionRoll, radioData.digitalData.roll, radioData.sensorToDigitalData.feebackUpperLimitRoll, radioData.sensorToDigitalData.feebackLowerLimitRoll);
@@ -166,30 +173,44 @@ void SensorToDigital::selectAxis()
     case RadioData::Orientation::T_UP:
         radioData.analogData.accelPitch = radioData.rawData.gravityY;
         radioData.analogData.accelRoll = radioData.rawData.gravityZ;
+        radioData.analogData.magFront = -radioData.rawData.magY;
+        radioData.analogData.magRight = radioData.rawData.magZ;
         break;
     case RadioData::Orientation::T_DOWN:
         radioData.analogData.accelPitch = radioData.rawData.gravityY;
         radioData.analogData.accelRoll = -radioData.rawData.gravityZ;
+        radioData.analogData.magFront = -radioData.rawData.magY;
+        radioData.analogData.magRight = -radioData.rawData.magZ;
         break;
     case RadioData::Orientation::T_LEFT:
         radioData.analogData.accelPitch = radioData.rawData.gravityY;
         radioData.analogData.accelRoll = -radioData.rawData.gravityX;
+        radioData.analogData.magFront = -radioData.rawData.magY;
+        radioData.analogData.magRight = -radioData.rawData.magX;
         break;
     case RadioData::Orientation::T_RIGHT:
         radioData.analogData.accelPitch = radioData.rawData.gravityY;
         radioData.analogData.accelRoll = radioData.rawData.gravityX;
+        radioData.analogData.magFront = -radioData.rawData.magY;
+        radioData.analogData.magRight = radioData.rawData.magX;
         break;
     case RadioData::Orientation::T_LEFT_DOWN:
         radioData.analogData.accelPitch = radioData.rawData.gravityZ;
         radioData.analogData.accelRoll = -radioData.rawData.gravityX;
+        radioData.analogData.magFront = -radioData.rawData.magZ;
+        radioData.analogData.magRight = -radioData.rawData.magX;
         break;
     case RadioData::Orientation::T_LEFT_UP:
         radioData.analogData.accelPitch = -radioData.rawData.gravityZ;
         radioData.analogData.accelRoll = -radioData.rawData.gravityX;
+        radioData.analogData.magFront = radioData.rawData.magZ;
+        radioData.analogData.magRight = -radioData.rawData.magX;
         break;
     case RadioData::Orientation::UNKNOWN:
         radioData.analogData.accelPitch = 0;
         radioData.analogData.accelRoll = 0;
+        radioData.analogData.magFront = 1;
+        radioData.analogData.magRight = 0;
         break;
     }
 }

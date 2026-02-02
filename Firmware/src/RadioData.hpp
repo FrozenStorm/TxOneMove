@@ -100,6 +100,9 @@ public:
         float gravityX = 0;
         float gravityY = 0;
         float gravityZ = 0;
+        float magX = 0;
+        float magY = 0;
+        float magZ = 0;
     };
     RawData rawData;
 
@@ -109,6 +112,8 @@ public:
         float throttle = 0;
         float accelPitch = 0;
         float accelRoll = 0;
+        float magFront = 0;
+        float magRight = 0;
         float pitch = 0;
         float roll = 0;
     };
@@ -142,6 +147,8 @@ public:
         double gpsAltitudeMeters = 0;
         int    gpsSatellites = 0;
         double gpsHdop = 0;
+
+        float heading = 0;
 
         bool feedbackVibration = 0;
         bool batteryWarning = 0;

@@ -120,7 +120,7 @@ void BluetoothComm::doFunction()
     doc["roll_angle"] = radioData.analogData.roll;
     doc["pitch"] = radioData.functionData.pitch * 100;
     doc["roll"] = radioData.functionData.roll * 100;
-    doc["heading"] = 0;
+    doc["heading"] = radioData.digitalData.heading;
     doc["tx_voltage"] = radioData.analogData.battery;
     doc["rx_voltage"] = radioData.transmitterData.receiverBatteryVoltage;
     doc["throttle_voltage"] = radioData.analogData.throttle;
