@@ -40,7 +40,6 @@ TickType_t                        lastWakeTime;
 /* -------------------- Setup ----------------------------------------------------------------------------------*/
 void setup() {
   Serial.begin(115200);
-
   // Nur für Debugging im USB-CDC Modus einkommentieren sonst startet das Board nicht ohne angeschlossenen Serial Monitor
   // while (!Serial) delay(10); 
   // Serial.setDebugOutput(true);

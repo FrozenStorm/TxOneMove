@@ -169,6 +169,11 @@ public:
     struct TransmitterData
     {
         float receiverBatteryVoltage = 0;
+        float receiverAltitude = 0;
+        float receiverMaxAlitude = 0;
+        float receiverVerticalSpeed = 0;
+        float v_sound_max;
+        float v_sound_min;
     };
     TransmitterData transmitterData;
     
@@ -242,6 +247,9 @@ void RadioData::storeGlobalData()
     pref.putFloat("stdd.fllr", sensorToDigitalData.feebackLowerLimitRoll);
 
     pref.putULong("stdd.fdu", sensorToDigitalData.feebackDurationUs);
+    
+    pref.putFloat("td.vsma", transmitterData.v_sound_max);
+    pref.putFloat("td.vsmi", transmitterData.v_sound_min);
 
     Serial.printf("Global entries left = %u\n", pref.freeEntries());
     pref.end();
@@ -330,6 +338,9 @@ void RadioData::loadGlobalData()
     sensorToDigitalData.feebackLowerLimitRoll = pref.getFloat("stdd.fllr", 0.05);
 
     sensorToDigitalData.feebackDurationUs = pref.getULong("stdd.fdu", 100000);
+
+    transmitterData.v_sound_max = pref.getFloat("td.vsma", 10.0);
+    transmitterData.v_sound_min = pref.getFloat("td.vsmi", 0.5);
     pref.end();
 }
 

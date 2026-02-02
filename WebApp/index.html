@@ -428,7 +428,7 @@
                 <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="20" onchange="setVolume()" style="width: 80px; height: 24px; accent-color: var(--accent); cursor: pointer; margin: 0 8px;">
                 <div class="vario-info">
                     <div class="vario-value" id="varioSpeedDisplay">0.0</div>
-                    <div class="vario-label">cm/s</div>
+                    <div class="vario-label">m/s</div>
                 </div>
             </div>
         </div>
@@ -474,7 +474,7 @@
                 </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Altitude</div>
-                    <div class="telemetry-value" id="telem-altitude">--</div>
+                    <div class="telemetry-value" id="telem-gps_saltitude">--</div>
                 </div>
             </div>
         </div>
@@ -525,6 +525,14 @@
                 <div class="telemetry-item">
                     <div class="telemetry-label">Rx Spannung</div>
                     <div class="telemetry-value" id="telem-rx_voltage">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Altitude</div>
+                    <div class="telemetry-value" id="telem-altitude">--</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Max. Altitude</div>
+                    <div class="telemetry-value" id="telem-max_altitude">--</div>
                 </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Steigrate</div>
@@ -735,6 +743,7 @@
             v_min: 50,
             v_max: 500,
             tx_voltage: 0,
+            altitude: 0,
             rx_voltage: 0,
             ddr_pitch: 0,
             ddr_roll: 0,
@@ -858,7 +867,7 @@
                 updateVarioSound(data.v_speed, data.v_min || currentData.v_min, data.v_max || currentData.v_max);
                 
                 // Update Vario Display in Topbar
-                document.getElementById('varioSpeedDisplay').textContent = data.v_speed.toFixed(0);
+                document.getElementById('varioSpeedDisplay').textContent = data.v_speed.toFixed(2);
                 
                 // Status für RX Telemetry
                 let statusText = 'neutral';
@@ -866,7 +875,7 @@
                     statusText = data.v_speed > 0 ? '↗ Steigt' : '↘ Sinkt';
                 }
                 
-                updateTelemDisplay('v_speed', data.v_speed, 0, ' cm/s');
+                updateTelemDisplay('v_speed', data.v_speed, 2, ' m/s');
                 document.getElementById('telem-v_status').textContent = statusText;
             }
             
@@ -887,10 +896,12 @@
             updateTelemDisplay('trim_roll', data.trim_roll, 0, '%');
             updateTelemDisplay('lat', data.gps_lat, 6, '°');
             updateTelemDisplay('lon', data.gps_lon, 6, '°');
+            updateTelemDisplay('gps_altitude', data.gps_altitude, 1, 'm');  
             updateTelemDisplay('heading', data.heading, 1, '°');
             updateTelemDisplay('hdop', data.gps_hdop, 2, '');
             updateTelemDisplay('satellites', data.gps_satellites, 0, '');
-            updateTelemDisplay('altitude', data.gps_altitude, 1, 'm');
+            updateTelemDisplay('altitude', data.altitude, 1, 'm');
+            updateTelemDisplay('max_altitude', data.max_altitude, 1, 'm');
             updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
             updateParameterDisplay(data);
         }
@@ -916,8 +927,6 @@
             container.innerHTML = '';
 
             const fields = [
-                { key: 'v_min', label: 'Vario Min [cm/s]', type: 'range', min: 0, max: 200 },
-                { key: 'v_max', label: 'Vario Max [cm/s]', type: 'range', min: 200, max: 2000 },
                 { key: 'ddr_pitch', label: 'D/R Pitch [%]', type: 'range', min: 0, max: 100 },
                 { key: 'ddr_roll', label: 'D/R Roll [%]', type: 'range', min: 0, max: 100 },
                 { key: 'expo_pitch', label: 'Expo Pitch [%]', type: 'range', min: 0, max: 100 },
@@ -925,7 +934,9 @@
                 { key: 'expo_throttle', label: 'Expo Throttle [%]', type: 'range', min: 0, max: 100 },
                 { key: 'throttle_to_pitch', label: 'Throttle → Pitch [%]', type: 'range', min: -100, max: 100 },
                 { key: 'throttle_max', label: 'Throttle max [V]', type: 'number', min: 0, max: 3.3 },
-                { key: 'throttle_min', label: 'Throttle min [V]', type: 'number', min: 0, max: 3.3 }
+                { key: 'throttle_min', label: 'Throttle min [V]', type: 'number', min: 0, max: 3.3 },
+                { key: 'v_min', label: 'Vario Min [m/s]', type: 'number', min: 0, max: 2.0 },
+                { key: 'v_max', label: 'Vario Max [m/s]', type: 'number', min: 2.0, max: 20.0 }
             ];
 
             fields.forEach(field => {

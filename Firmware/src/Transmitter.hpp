@@ -9,6 +9,7 @@
 #define CRSF_ADDRESS_REMOTE_CONTROL 0xEA
 #define CRSF_FRAME_RC_CHANNELS_PACKED 0x16
 #define CRSF_BATTERY_TYPE 0x08 
+#define CRSF_BAROMETRIC_ALTITUDE_AND_VERTICAL_SPEED_TYPE 0x09
 #define CRSF_FRAME_SIZE_MAX 64
 #define BITS_PER_CHANNEL 11
 #define CHANNEL_DATA_LENGTH (CHANNEL_COUNT * BITS_PER_CHANNEL / 8)  // 22 Bytes
@@ -19,6 +20,8 @@
 class Transmitter : public RadioClass
 {
 private:
+    const int   Kl = 100;       // linearity constant;
+    const float Kr = .026;      // range constant;
     uint8_t txData[CRSF_FRAME_SIZE_MAX];
     uint8_t rxData[CRSF_FRAME_SIZE_MAX];
     uint8_t rxPos = 0;
@@ -41,6 +44,10 @@ private:
                                     0xD6, 0x03, 0xA9, 0x7C, 0x28, 0xFD, 0x57, 0x82, 0xFF, 0x2A, 0x80, 0x55, 0x01, 0xD4, 0x7E, 0xAB,
                                     0x84, 0x51, 0xFB, 0x2E, 0x7A, 0xAF, 0x05, 0xD0, 0xAD, 0x78, 0xD2, 0x07, 0x53, 0x86, 0x2C, 0xF9};
     uint8_t crc8(const uint8_t * ptr, uint8_t length);
+    int32_t get_altitude_dm(uint16_t packed);
+    uint16_t get_altitude_packed (int32_t altitude_dm);
+    int8_t sign(int16_t value);
+    int16_t get_vertical_speed_cm_s (int8_t vertical_speed_packed);
     void packChannels(uint8_t *output);
     bool sendTx(void);
     bool receiveRx(void);
@@ -107,6 +114,7 @@ bool Transmitter::sendTx()
 
 bool Transmitter::receiveRx()
 {
+  uint8_t len;
   while (Serial1.available()) {
     uint8_t byte = Serial1.read();
     switch (rxState) {
@@ -128,15 +136,19 @@ bool Transmitter::receiveRx()
         rxData[rxPos++] = byte;
         if (byte == CRSF_BATTERY_TYPE) {  // Battery Sensor?
           rxState = 3;
-        } else {
+        }
+        else if(byte == CRSF_BAROMETRIC_ALTITUDE_AND_VERTICAL_SPEED_TYPE) { // Barometric Altitude and Vertical Speed Sensor
+          rxState = 4;
+        }
+        else {
           rxState = 0;  // Nur Battery verarbeiten
         }
         break;
         
-      case 3:  // Payload + CRC sammeln
+      case 3:  // CRSF_BATTERY_TYPE: Payload + CRC sammeln
         // Serial.printf("CRSF: Battery Byte empfangen %x\n", byte );
         rxData[rxPos++] = byte;
-        uint8_t len = rxData[1];
+        len = rxData[1];
         if (rxPos >= len + 2) {  // Vollständig: DeviceAddr(1) + Type(1) + Payload(len-4) + CRC(1) + Len(1)? Warte, Standard: Sync+Len+Type+Payload+(Len-3)+CRC
           // CRC prüfen (über Len+Type+Payload)
           uint8_t calc_crc = crc8(&rxData[2], len-1);
@@ -146,7 +158,28 @@ bool Transmitter::receiveRx()
             uint16_t current = (rxData[5] << 8) | rxData[6];      // mA
             uint16_t consumption = (rxData[7] << 8) | rxData[8];  // mAh
             radioData.transmitterData.receiverBatteryVoltage = voltage / 10.0;  // 0.01V steps -> Volt
-            float a = current / 10.0;  // 0.01A steps -> Amp
+          }
+          rxState = 0;
+          rxPos = 0;
+        }
+        break;
+
+      case 4:  // CRSF_BAROMETRIC_ALTITUDE_AND_VERTICAL_SPEED_TYPE: Payload + CRC sammeln
+        rxData[rxPos++] = byte;
+        len = rxData[1];
+        if (rxPos >= len + 2) {  // Vollständig: DeviceAddr(1) + Type(1) + Payload(len-4) + CRC(1) + Len(1)? Warte, Standard: Sync+Len+Type+Payload+(Len-3)+CRC
+          // CRC prüfen (über Len+Type+Payload)
+          uint8_t calc_crc = crc8(&rxData[2], len-1);
+          if (calc_crc == rxData[rxPos - 1]) {
+            uint16_t altitude_raw = (rxData[3] << 8) | rxData[4];      
+            int32_t altitude_dm = get_altitude_dm(altitude_raw);  // in dm   
+            radioData.transmitterData.receiverAltitude = altitude_dm / 10.0;  // 0.1m steps -> meters
+            if(radioData.transmitterData.receiverAltitude > radioData.transmitterData.receiverMaxAlitude){
+                radioData.transmitterData.receiverMaxAlitude = radioData.transmitterData.receiverAltitude;
+            }
+            int8_t verticalSpeed_raw = rxData[6];
+            int16_t verticalSpeed = get_vertical_speed_cm_s(verticalSpeed_raw);  // in cm/s
+            radioData.transmitterData.receiverVerticalSpeed = verticalSpeed / 100.0;  // 0.01m/s steps -> m/s
           }
           rxState = 0;
           rxPos = 0;
@@ -155,4 +188,17 @@ bool Transmitter::receiveRx()
     }
   }
   return true;
+}
+
+int32_t Transmitter::get_altitude_dm(uint16_t packed){
+    return (packed & 0x8000) ? (packed & 0x7fff) * 10 : (packed - 10000);
+}
+
+int8_t Transmitter::sign(int16_t value) {
+    return (value > 0) ? 1 : (value < 0) ? -1 : 0;
+}
+
+int16_t Transmitter::get_vertical_speed_cm_s (int8_t vertical_speed_packed){
+    return (exp(abs(vertical_speed_packed * Kr)) - 1) * Kl
+                           * sign(vertical_speed_packed);
 }
