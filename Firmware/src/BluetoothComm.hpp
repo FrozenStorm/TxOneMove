@@ -127,6 +127,7 @@ void BluetoothComm::doFunction()
     doc["trim_pitch"] = radioData.trimData.pitch * 100;
     doc["trim_roll"] = radioData.trimData.roll * 100;
     doc["throttle"] = radioData.functionData.throttle * 100;
+    doc["v_speed"] = radioData.functionData.pitch * 100;
 
     // Parameter ins JSON-Dokument schreiben
     doc["ddr_pitch"] = radioData.dualRateData.pitch * 100;
@@ -137,6 +138,8 @@ void BluetoothComm::doFunction()
     doc["throttle_to_pitch"] = radioData.mixerData.throttleToPitch * 100;
     doc["throttle_min"] = radioData.analogToDigitalData.throttleLimit.min;
     doc["throttle_max"] = radioData.analogToDigitalData.throttleLimit.max;
+    doc["v_max"] = 80;
+    doc["v_min"] = 20;
 
     // JSON senden
     serializeJson(doc, buffer);
