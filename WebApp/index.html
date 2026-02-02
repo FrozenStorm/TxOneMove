@@ -577,7 +577,6 @@
         let sinkGainNode = null;
         let varioVolume = 0.1;
         let lastClimbToneTime = 0;
-        const MIN_CLIMB_TONE_INTERVAL = 100;
 
         function initAudioContext() {
             if (!audioCtx) {
@@ -595,11 +594,11 @@
             addLog('🔊 Lautstärke: ' + slider.value + '%');
         }
 
-        function playClimbTone(frequency, volume) {
+        function playClimbTone(frequency, interval) {
             if (!varioActive || !audioCtx) return;
 
             const now = Date.now();
-            if (now - lastClimbToneTime < MIN_CLIMB_TONE_INTERVAL) return;
+            if (now - lastClimbToneTime < interval) return;
             lastClimbToneTime = now;
 
             const oscillator = audioCtx.createOscillator();
@@ -613,7 +612,7 @@
             
             // Kurzer Puls für Steigen
             gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.01);
+            gainNode.gain.linearRampToValueAtTime(varioVolume, audioCtx.currentTime + 0.01);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
             
             oscillator.start(audioCtx.currentTime);
@@ -666,8 +665,8 @@
                 stopSinkTone();
                 const ratio = Math.min(v_speed / v_max, 1.0);
                 const frequency = 400 + (ratio * 1600);  // 400-2000 Hz
-                const volume = 0.08 + (ratio * 0.12);
-                playClimbTone(frequency, volume);
+                const interval = 200 - (ratio * 150);  // 200-50 ms
+                playClimbTone(frequency, interval);
             } else {
                 // SINKEN: durchgehender Ton mit wechselnder Frequenz
                 const ratio = Math.min(Math.abs(v_speed) / v_max, 1.0);
@@ -863,8 +862,8 @@
                 
                 // Status für RX Telemetry
                 let statusText = 'neutral';
-                if (Math.abs(data.v_speed) >= (data.v_min || currentData.v_min)) {
-                    statusText = data.v_speed > 0 ? '↗ Steig' : '↘ Sink';
+                if (Math.abs(data.v_speed) >= 0) {
+                    statusText = data.v_speed > 0 ? '↗ Steigt' : '↘ Sinkt';
                 }
                 
                 updateTelemDisplay('v_speed', data.v_speed, 0, ' cm/s');
