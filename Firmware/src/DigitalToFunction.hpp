@@ -47,7 +47,7 @@ void DigitalToFunction::doFunction()
     } 
 
     // Vibration Feedback and Battery Warning
-    if(radioData.digitalData.batteryWarning == true || radioData.digitalData.feedbackVibration == true)
+    if(radioData.digitalData.batteryWarning == true) // || radioData.digitalData.feedbackVibration == true)
     {
         digitalWrite(PIN_VIBRATION, HIGH);
     }
