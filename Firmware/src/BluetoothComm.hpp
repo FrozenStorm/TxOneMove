@@ -11,6 +11,7 @@
 
 BLECharacteristic* pTxChar = nullptr;
 BLECharacteristic* pRxChar = nullptr;
+BLEServer* pServer = nullptr;
 bool deviceConnected = false;
 
 class RxCallback : public BLECharacteristicCallbacks {
@@ -56,23 +57,31 @@ class RxCallback : public BLECharacteristicCallbacks {
 };
 
 class ServerCallback : public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) override {
+    void onConnect(BLEServer* pSrv) override {
         deviceConnected = true;
     }
     
-    void onDisconnect(BLEServer* pServer) override {
+    void onDisconnect(BLEServer* pSrv) override {
         deviceConnected = false;
+        // Nach Disconnect: Advertising neu starten damit Wiederverbindung möglich ist
+        if (pServer) {
+            pServer->getAdvertising()->start();
+        }
     }
 };
 
 class BluetoothComm : public RadioClass{
 private:
     JsonDocument doc;
-    char buffer[512] = "";
+    JsonDocument rxDoc;
+    char buffer[1024] = "";
+    ServerCallback* pServerCallback = nullptr;
+    RxCallback* pRxCallback = nullptr;
 public:
     BluetoothComm(RadioData& newRadioData): RadioClass(newRadioData){}
     void begin(void);
     void doFunction();
+    ~BluetoothComm();
 };
 
 void BluetoothComm::begin()
@@ -80,8 +89,9 @@ void BluetoothComm::begin()
     BLEDevice::init("TxOneMove");
     BLEDevice::setMTU(517);
         
-    BLEServer* pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new ServerCallback());
+    pServer = BLEDevice::createServer();
+    pServerCallback = new ServerCallback();
+    pServer->setCallbacks(pServerCallback);
     
     BLEService* pService = pServer->createService(SERVICE_UUID);
     
@@ -95,7 +105,8 @@ void BluetoothComm::begin()
         CHARACTERISTIC_RX,
         BLECharacteristic::PROPERTY_WRITE
     );
-    pRxChar->setCallbacks(new RxCallback(radioData));
+    pRxCallback = new RxCallback(radioData);
+    pRxChar->setCallbacks(pRxCallback);
     
     pService->start();
     pServer->getAdvertising()->start();
@@ -107,7 +118,10 @@ void BluetoothComm::doFunction()
     if(!deviceConnected) return;
 
     if(millis() - lastUpdate < 100) return;
-    lastUpdate = millis();
+    lastUpdate = millis(); 
+    
+    // JSON-Dokument vor dem Senden leeren
+    doc.clear();
 
     // Telemetrie-Daten ins JSON-Dokument schreiben
     doc["armed"] = radioData.functionData.armed ? 1 : 0;
@@ -144,7 +158,14 @@ void BluetoothComm::doFunction()
     doc["v_min"] = radioData.transmitterData.v_sound_min;
 
     // JSON senden
-    serializeJson(doc, buffer);
-    pTxChar->setValue(buffer);
+    memset(buffer, 0, sizeof(buffer));
+    serializeJson(doc, buffer, sizeof(buffer));
+    pTxChar->setValue((uint8_t*)buffer, strlen(buffer));
     pTxChar->notify();
+}
+
+BluetoothComm::~BluetoothComm()
+{
+    if(pServerCallback) delete pServerCallback;
+    if(pRxCallback) delete pRxCallback;
 }
