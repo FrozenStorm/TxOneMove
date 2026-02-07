@@ -106,7 +106,7 @@ void BluetoothComm::doFunction()
     static unsigned long lastUpdate = 0;
     if(!deviceConnected) return;
 
-    if(millis() - lastUpdate < 50) return;
+    if(millis() - lastUpdate < 100) return;
     lastUpdate = millis();
 
     // Telemetrie-Daten ins JSON-Dokument schreiben
