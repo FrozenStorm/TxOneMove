@@ -155,25 +155,34 @@ bool Transmitter::receiveRx()
       rxCount--;
       continue;
     }
-
+    // TODO Richtig Fixen anstelle überspringen von falschen werten
     uint8_t type = rxData[rxRead + 2];
     if (type == CRSF_BATTERY_TYPE) {
       uint16_t voltage = (rxData[rxRead + 3] << 8) | rxData[rxRead + 4];      // mV
-      uint16_t current = (rxData[rxRead + 5] << 8) | rxData[rxRead + 6];      // mA
-      uint16_t consumption = (rxData[rxRead + 7] << 8) | rxData[rxRead + 8];  // mAh
-      (void)current;
-      (void)consumption;
-      radioData.transmitterData.receiverBatteryVoltage = voltage / 10.0;  // 0.01V steps -> Volt
+      // uint16_t current = (rxData[rxRead + 5] << 8) | rxData[rxRead + 6];      // mA
+      // uint16_t consumption = (rxData[rxRead + 7] << 8) | rxData[rxRead + 8];  // mAh
+      if(rxData[rxRead + 3] != 0x3D && rxData[rxRead + 4] != 0x09){ // Filter out invalid voltage readings
+        radioData.transmitterData.receiverBatteryVoltage = voltage / 10.0;  // 0.01V steps -> Volt
+      }
+      // Serial.printf("Received: BatteryVoltage=%.2fV\n", radioData.transmitterData.receiverBatteryVoltage);
+      // Serial.printf("raw voltage hex: %02X%02X\n", rxData[rxRead + 3], rxData[rxRead + 4]);
     } else if (type == CRSF_BAROMETRIC_ALTITUDE_AND_VERTICAL_SPEED_TYPE) {
       uint16_t altitude_raw = (rxData[rxRead + 3] << 8) | rxData[rxRead + 4];      
       int32_t altitude_dm = get_altitude_dm(altitude_raw);  // in dm   
-      radioData.transmitterData.receiverAltitude = altitude_dm / 10.0;  // 0.1m steps -> meters
-      if (radioData.transmitterData.receiverAltitude > radioData.transmitterData.receiverMaxAlitude) {
-        radioData.transmitterData.receiverMaxAlitude = radioData.transmitterData.receiverAltitude;
+      if(rxData[rxRead + 3] != 0x3D && rxData[rxRead + 4] != 0x05){ // Filter out invalid altitude readings
+        radioData.transmitterData.receiverAltitude = altitude_dm / 10.0;  // 0.1m steps -> meters
+        if (radioData.transmitterData.receiverAltitude > radioData.transmitterData.receiverMaxAlitude) {
+          radioData.transmitterData.receiverMaxAlitude = radioData.transmitterData.receiverAltitude;
+        }
       }
       int8_t verticalSpeed_raw = rxData[rxRead + 6];
       int16_t verticalSpeed = get_vertical_speed_cm_s(verticalSpeed_raw);  // in cm/s
-      radioData.transmitterData.receiverVerticalSpeed = verticalSpeed / 100.0;  // 0.01m/s steps -> m/s
+      if(rxData[rxRead + 6] != 0x3A){ // Filter out invalid vertical speed readings
+        radioData.transmitterData.receiverVerticalSpeed = verticalSpeed / 100.0;  // 0.01m/s steps -> m/s
+      }
+      // Serial.printf("Received: Altitude=%.1fm, VerticalSpeed=%.2fm/s\n", radioData.transmitterData.receiverAltitude, radioData.transmitterData.receiverVerticalSpeed);
+      // Serial.printf("raw altitude hex: %02X%02X\n", rxData[rxRead + 3], rxData[rxRead + 4]);
+      // Serial.printf("raw vertical speed hex: %02X\n", rxData[rxRead + 6]);  
     }
 
     rxRead = (rxRead + frameSize) % RX_BUFFER_SIZE;

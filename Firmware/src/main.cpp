@@ -64,7 +64,13 @@ void setup() {
 
 /* -------------------- Main -----------------------------------------------------------------------------------*/
 void loop() { // Core 1
-    xTaskDelayUntil(&lastWakeTime, loopDelay);
+    // if(xTaskGetTickCount() - lastWakeTime > loopDelay)
+    // {
+    //     Serial.println("Loop time exceeded! Wait for mulitple of 20ms to pass before starting next loop.");
+    //     Serial.printf("Time since last loop: %d ms\n", (xTaskGetTickCount() - lastWakeTime) * portTICK_PERIOD_MS);
+    //     Serial.printf("New wait time: %d ms\n", ((xTaskGetTickCount() - lastWakeTime) / loopDelay + 1) * loopDelay * portTICK_PERIOD_MS);
+    //     xTaskDelayUntil(&lastWakeTime, ((xTaskGetTickCount() - lastWakeTime) / loopDelay + 1) * loopDelay);
+    // }
     analogToDigital.doFunction();
     sensorToDigital.doFunction();
     digitalToFunction.doFunction();
@@ -73,6 +79,8 @@ void loop() { // Core 1
     dualRate.doFunction();
     mixer.doFunction();
     functionToChannel.doFunction();
+    
+    xTaskDelayUntil(&lastWakeTime, loopDelay);
     transmitter.doFunction();
     bluetoothComm.doFunction();
 }
