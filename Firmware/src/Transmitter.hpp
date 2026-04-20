@@ -24,8 +24,9 @@ private:
     const float Kr = .026;      // range constant;
     uint8_t txData[CRSF_FRAME_SIZE_MAX];
     uint8_t rxData[CRSF_FRAME_SIZE_MAX];
-    uint8_t rxPos = 0;
-    uint8_t rxState = 0;   // 0: sync wait, 1: length, 2: type, 3: payload+CRC
+    uint8_t rxRead = 0;
+    uint8_t rxWrite = 0;
+    uint8_t rxCount = 0;
     unsigned char crc8tab[256] = {
                                     0x00, 0xD5, 0x7F, 0xAA, 0xFE, 0x2B, 0x81, 0x54, 0x29, 0xFC, 0x56, 0x83, 0xD7, 0x02, 0xA8, 0x7D,
                                     0x52, 0x87, 0x2D, 0xF8, 0xAC, 0x79, 0xD3, 0x06, 0x7B, 0xAE, 0x04, 0xD1, 0x85, 0x50, 0xFA, 0x2F,
@@ -43,7 +44,7 @@ private:
                                     0x20, 0xF5, 0x5F, 0x8A, 0xDE, 0x0B, 0xA1, 0x74, 0x09, 0xDC, 0x76, 0xA3, 0xF7, 0x22, 0x88, 0x5D,
                                     0xD6, 0x03, 0xA9, 0x7C, 0x28, 0xFD, 0x57, 0x82, 0xFF, 0x2A, 0x80, 0x55, 0x01, 0xD4, 0x7E, 0xAB,
                                     0x84, 0x51, 0xFB, 0x2E, 0x7A, 0xAF, 0x05, 0xD0, 0xAD, 0x78, 0xD2, 0x07, 0x53, 0x86, 0x2C, 0xF9};
-    uint8_t crc8(const uint8_t * ptr, uint8_t length);
+    uint8_t crc8(const uint8_t * ptr, uint8_t idx, uint8_t length);
     int32_t get_altitude_dm(uint16_t packed);
     uint16_t get_altitude_packed (int32_t altitude_dm);
     int8_t sign(int16_t value);
@@ -69,11 +70,11 @@ void Transmitter::doFunction()
     sendTx();
 }
 
-uint8_t Transmitter::crc8(const uint8_t * ptr, uint8_t length)
+uint8_t Transmitter::crc8(const uint8_t * ptr, uint8_t idx, uint8_t length)
 {
     uint8_t crc = 0;
     for (uint8_t i=0; i<length; i++)
-        crc = crc8tab[crc ^ *ptr++];
+        crc = crc8tab[crc ^ ptr[(idx + i) % CRSF_FRAME_SIZE_MAX]];
     return crc;
 }
 
@@ -99,7 +100,7 @@ bool Transmitter::sendTx()
     packChannels(&txData[3]);
     
     // CRC über Addr+Type+Len+Data
-    uint8_t crc = crc8(&txData[2], CRC_LENGTH);
+    uint8_t crc = crc8(txData, 2,CRC_LENGTH);
     txData[TOTAL_LENGTH - 1] = crc;
     
     // Senden
@@ -114,79 +115,71 @@ bool Transmitter::sendTx()
 
 bool Transmitter::receiveRx()
 {
-  uint8_t len;
+  const uint8_t RX_BUFFER_SIZE = CRSF_FRAME_SIZE_MAX;
   while (Serial1.available()) {
     uint8_t byte = Serial1.read();
-    switch (rxState) {
-      case 0:  // Sync Byte warten
-        if (byte == CRSF_ADDRESS_REMOTE_CONTROL) {
-          // Serial.println("CRSF: Sync Byte empfangen");
-          rxState = 1;
-          rxPos = 0;
-          rxData[rxPos++] = byte;
-        }
-        break;
-        
-      case 1:  // Length
-        rxData[rxPos++] = byte;
-        rxState = 2;
-        break;
-        
-      case 2:  // Type (Adressfeld)
-        rxData[rxPos++] = byte;
-        if (byte == CRSF_BATTERY_TYPE) {  // Battery Sensor?
-          rxState = 3;
-        }
-        else if(byte == CRSF_BAROMETRIC_ALTITUDE_AND_VERTICAL_SPEED_TYPE) { // Barometric Altitude and Vertical Speed Sensor
-          rxState = 4;
-        }
-        else {
-          rxState = 0;  // Nur Battery verarbeiten
-        }
-        break;
-        
-      case 3:  // CRSF_BATTERY_TYPE: Payload + CRC sammeln
-        // Serial.printf("CRSF: Battery Byte empfangen %x\n", byte );
-        rxData[rxPos++] = byte;
-        len = rxData[1];
-        if (rxPos >= len + 2) {  // Vollständig: DeviceAddr(1) + Type(1) + Payload(len-4) + CRC(1) + Len(1)? Warte, Standard: Sync+Len+Type+Payload+(Len-3)+CRC
-          // CRC prüfen (über Len+Type+Payload)
-          uint8_t calc_crc = crc8(&rxData[2], len-1);
-          if (calc_crc == rxData[rxPos - 1]) {
-            // Battery Daten extrahieren (Payload start bei Index 3)
-            uint16_t voltage = (rxData[3] << 8) | rxData[4];      // mV
-            uint16_t current = (rxData[5] << 8) | rxData[6];      // mA
-            uint16_t consumption = (rxData[7] << 8) | rxData[8];  // mAh
-            radioData.transmitterData.receiverBatteryVoltage = voltage / 10.0;  // 0.01V steps -> Volt
-          }
-          rxState = 0;
-          rxPos = 0;
-        }
-        break;
-
-      case 4:  // CRSF_BAROMETRIC_ALTITUDE_AND_VERTICAL_SPEED_TYPE: Payload + CRC sammeln
-        rxData[rxPos++] = byte;
-        len = rxData[1];
-        if (rxPos >= len + 2) {  // Vollständig: DeviceAddr(1) + Type(1) + Payload(len-4) + CRC(1) + Len(1)? Warte, Standard: Sync+Len+Type+Payload+(Len-3)+CRC
-          // CRC prüfen (über Len+Type+Payload)
-          uint8_t calc_crc = crc8(&rxData[2], len-1);
-          if (calc_crc == rxData[rxPos - 1]) {
-            uint16_t altitude_raw = (rxData[3] << 8) | rxData[4];      
-            int32_t altitude_dm = get_altitude_dm(altitude_raw);  // in dm   
-            radioData.transmitterData.receiverAltitude = altitude_dm / 10.0;  // 0.1m steps -> meters
-            if(radioData.transmitterData.receiverAltitude > radioData.transmitterData.receiverMaxAlitude){
-                radioData.transmitterData.receiverMaxAlitude = radioData.transmitterData.receiverAltitude;
-            }
-            int8_t verticalSpeed_raw = rxData[6];
-            int16_t verticalSpeed = get_vertical_speed_cm_s(verticalSpeed_raw);  // in cm/s
-            radioData.transmitterData.receiverVerticalSpeed = verticalSpeed / 100.0;  // 0.01m/s steps -> m/s
-          }
-          rxState = 0;
-          rxPos = 0;
-        }
-        break;
+    if (rxCount < RX_BUFFER_SIZE) {
+      rxData[rxWrite] = byte;
+      rxWrite = (rxWrite + 1) % RX_BUFFER_SIZE;
+      rxCount++;
+    } else {
+      // Buffer überlaufen: ältestes Byte verwerfen und neuen Byte einfügen
+      rxRead = (rxRead + 1) % RX_BUFFER_SIZE;
+      rxData[rxWrite] = byte;
+      rxWrite = (rxWrite + 1) % RX_BUFFER_SIZE;
     }
   }
+
+  while (rxCount >= 2) {
+    if (rxData[rxRead] != CRSF_ADDRESS_REMOTE_CONTROL) {
+      rxRead = (rxRead + 1) % RX_BUFFER_SIZE;
+      rxCount--;
+      continue;
+    }
+
+    uint8_t len = rxData[(rxRead + 1) % RX_BUFFER_SIZE];
+    if (len < 2 || len > 62) {
+      rxRead = (rxRead + 1) % RX_BUFFER_SIZE;
+      rxCount--;
+      continue;
+    }
+
+    uint8_t frameSize = len + 2;
+    if (rxCount < frameSize) {
+      break;
+    }
+
+    uint8_t calc_crc = crc8(rxData, rxRead + 2 , len - 1);
+    if (calc_crc != rxData[(rxRead + frameSize - 1) % RX_BUFFER_SIZE]) {
+      rxRead = (rxRead + 1) % RX_BUFFER_SIZE;
+      rxCount--;
+      continue;
+    }
+
+    uint8_t type = rxData[rxRead + 2];
+    if (type == CRSF_BATTERY_TYPE) {
+      uint16_t voltage = (rxData[rxRead + 3] << 8) | rxData[rxRead + 4];      // mV
+      uint16_t current = (rxData[rxRead + 5] << 8) | rxData[rxRead + 6];      // mA
+      uint16_t consumption = (rxData[rxRead + 7] << 8) | rxData[rxRead + 8];  // mAh
+      (void)current;
+      (void)consumption;
+      radioData.transmitterData.receiverBatteryVoltage = voltage / 10.0;  // 0.01V steps -> Volt
+    } else if (type == CRSF_BAROMETRIC_ALTITUDE_AND_VERTICAL_SPEED_TYPE) {
+      uint16_t altitude_raw = (rxData[rxRead + 3] << 8) | rxData[rxRead + 4];      
+      int32_t altitude_dm = get_altitude_dm(altitude_raw);  // in dm   
+      radioData.transmitterData.receiverAltitude = altitude_dm / 10.0;  // 0.1m steps -> meters
+      if (radioData.transmitterData.receiverAltitude > radioData.transmitterData.receiverMaxAlitude) {
+        radioData.transmitterData.receiverMaxAlitude = radioData.transmitterData.receiverAltitude;
+      }
+      int8_t verticalSpeed_raw = rxData[rxRead + 6];
+      int16_t verticalSpeed = get_vertical_speed_cm_s(verticalSpeed_raw);  // in cm/s
+      radioData.transmitterData.receiverVerticalSpeed = verticalSpeed / 100.0;  // 0.01m/s steps -> m/s
+    }
+
+    rxRead = (rxRead + frameSize) % RX_BUFFER_SIZE;
+    rxCount -= frameSize;
+  }
+
   return true;
 }
 
