@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../WebApp"
+		},
+		{
+			"path": "../Python"
+		}
+	],
+	"settings": {}
+}

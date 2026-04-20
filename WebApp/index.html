@@ -491,7 +491,7 @@
                 </div>
                 <div class="telemetry-item">
                     <div class="telemetry-label">Altitude</div>
-                    <div class="telemetry-value" id="telem-gps_saltitude">--</div>
+                    <div class="telemetry-value" id="telem-gps_altitude">--</div>
                 </div>
             </div>
         </div>
@@ -594,6 +594,61 @@
     </div>
 
     <script>
+        // ============ BINARY PROTOCOL CONSTANTS ============
+        const CMD_SAVE_PARAMS     = 0x01;
+        const CMD_RESET_TRIM      = 0x02;
+        const CMD_UPDATE_PARAM    = 0x03;
+
+        const PARAM_TRIM_PITCH           = 0;
+        const PARAM_TRIM_ROLL            = 1;
+        const PARAM_DDR_PITCH            = 2;
+        const PARAM_DDR_ROLL             = 3;
+        const PARAM_EXPO_PITCH           = 4;
+        const PARAM_EXPO_ROLL            = 5;
+        const PARAM_EXPO_THROTTLE        = 6;
+        const PARAM_THROTTLE_TO_PITCH    = 7;
+        const PARAM_THROTTLE_MIN         = 8;
+        const PARAM_THROTTLE_MAX         = 9;
+
+        // ============ BINARY READ/WRITE HELPERS ============
+        function readFloat32(buffer, offset) {
+            const view = new DataView(buffer);
+            return view.getFloat32(offset, true);  // true = little-endian
+        }
+
+        function readFloat64(buffer, offset) {
+            const view = new DataView(buffer);
+            return view.getFloat64(offset, true);
+        }
+
+        function readUint16(buffer, offset) {
+            const view = new DataView(buffer);
+            return view.getUint16(offset, true);
+        }
+
+        function readUint8(buffer, offset) {
+            return new Uint8Array(buffer)[offset];
+        }
+
+        function writeFloat32(buffer, offset, value) {
+            const view = new DataView(buffer);
+            view.setFloat32(offset, value, true);
+        }
+
+        function writeFloat64(buffer, offset, value) {
+            const view = new DataView(buffer);
+            view.setFloat64(offset, value, true);
+        }
+
+        function writeUint16(buffer, offset, value) {
+            const view = new DataView(buffer);
+            view.setUint16(offset, value, true);
+        }
+
+        function writeUint8(buffer, offset, value) {
+            new Uint8Array(buffer)[offset] = value;
+        }
+
         // ============ AUDIO & VARIO ============
         let audioCtx = null;
         let wakeLock = null;
@@ -746,8 +801,8 @@
 
         // ============ STATE ============
         let bleDevice = null;
-        let txChar = null;
-        let rxChar = null;
+        let dataChar = null;
+        let cmdChar = null;
         let map = null;
         let marker = null;
         let currentData = {
@@ -787,11 +842,11 @@
                 const server = await bleDevice.gatt.connect();
                 const service = await server.getPrimaryService('12345678-1234-5678-1234-56789abcdef0');
 
-                txChar = await service.getCharacteristic('12345678-1234-5678-1234-56789abcdef1');
-                rxChar = await service.getCharacteristic('12345678-1234-5678-1234-56789abcdef2');
+                dataChar = await service.getCharacteristic('12345678-1234-5678-1234-56789abcde00');
+                cmdChar = await service.getCharacteristic('12345678-1234-5678-1234-56789abcde05');
 
-                await txChar.startNotifications();
-                txChar.addEventListener('characteristicvaluechanged', onTelemetryUpdate);
+                await dataChar.startNotifications();
+                dataChar.addEventListener('characteristicvaluechanged', onTelemetryUpdate);
 
                 updateStatus(true);
                 addLog("✓ Verbunden!");
@@ -807,18 +862,20 @@
                 addLog("Getrennt");
                 const container = document.getElementById('controlsContainer');
                 container.innerHTML = '';
+                dataChar = null;
+                cmdChar = null;
             }
         }
 
         async function resetTrim() {
-            if (!rxChar) { 
+            if (!cmdChar) { 
                 addLog("✗ Nicht verbunden!"); 
                 return; 
             }
             try {
-                const cmd = { command: "RESET_TRIM" };
-                const jsonStr = JSON.stringify(cmd);
-                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
+                const buffer = new ArrayBuffer(1);
+                writeUint8(buffer, 0, CMD_RESET_TRIM);
+                await cmdChar.writeValue(buffer);
                 addLog("→ RESET_TRIM gesendet!");
             } catch (error) {
                 addLog("✗ Reset-Fehler: " + error.message);
@@ -827,8 +884,46 @@
 
         function onTelemetryUpdate(e) {
             try {
-                const jsonStr = new TextDecoder().decode(e.target.value.buffer);
-                const data = JSON.parse(jsonStr);
+                const buffer = e.target.value.buffer;
+                const view = new Uint8Array(buffer);
+                
+                if (buffer.byteLength < 1) return;
+                
+                let offset = 0;
+                const data = {};
+                    
+                data.armed = readUint8(buffer, offset); offset += 1;
+                data.tx_voltage = readFloat32(buffer, offset); offset += 4;
+                data.throttle_voltage = readFloat32(buffer, offset); offset += 4;
+                data.trim_pitch = readFloat32(buffer, offset); offset += 4;
+                data.trim_roll = readFloat32(buffer, offset); offset += 4;
+                data.throttle = readFloat32(buffer, offset); offset += 4;
+                data.pitch = readFloat32(buffer, offset); offset += 4;
+                data.roll = readFloat32(buffer, offset); offset += 4;
+            
+                data.rx_voltage = readFloat32(buffer, offset); offset += 4;
+                data.altitude = readFloat32(buffer, offset); offset += 4;
+                data.max_altitude = readFloat32(buffer, offset); offset += 4;
+                data.v_speed = readFloat32(buffer, offset); offset += 4;
+            
+                data.gps_lat = readFloat64(buffer, offset); offset += 8;
+                data.gps_lon = readFloat64(buffer, offset); offset += 8;
+                data.gps_hdop = readFloat32(buffer, offset); offset += 4;
+                data.gps_altitude = readFloat32(buffer, offset); offset += 4;
+                data.gps_satellites = readUint16(buffer, offset); offset += 2;
+                data.heading = readFloat32(buffer, offset); offset += 4;
+            
+                data.ddr_pitch = readFloat32(buffer, offset); offset += 4;
+                data.ddr_roll = readFloat32(buffer, offset); offset += 4;
+                data.expo_pitch = readFloat32(buffer, offset); offset += 4;
+                data.expo_roll = readFloat32(buffer, offset); offset += 4;
+                data.expo_throttle = readFloat32(buffer, offset); offset += 4;
+                data.throttle_to_pitch = readFloat32(buffer, offset); offset += 4;
+                data.throttle_min = readFloat32(buffer, offset); offset += 4;
+                data.throttle_max = readFloat32(buffer, offset); offset += 4;
+                data.v_max = readUint16(buffer, offset); offset += 2;
+                data.v_min = readUint16(buffer, offset); offset += 2;
+
                 updateTelemetry(data);
             } catch (error) {
                 addLog("Parse-Fehler: " + error.message);
@@ -841,7 +936,7 @@
         let debounceTimers = {};
 
         async function sendCommand(cmdJson) {
-            if (!rxChar) { alert("Nicht verbunden!"); return; }
+            if (!cmdChar) { addLog("✗ Nicht verbunden!"); return; }
             commandQueue.push(cmdJson);
             if (!isSending) {
                 processCommandQueue();
@@ -853,15 +948,51 @@
             isSending = true;
             const cmd = commandQueue.shift();
             try {
-                const jsonStr = JSON.stringify(cmd);
-                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
-                addLog("→ Gesendet: " + jsonStr);
+                const buffer = encodeCommand(cmd);
+                await cmdChar.writeValue(buffer);
+                addLog("→ Befehl gesendet (" + buffer.byteLength + " bytes)");
             } catch (error) {
                 addLog("✗ Send-Fehler: " + error.message);
             }
             isSending = false;
             if (commandQueue.length > 0) {
                 setTimeout(processCommandQueue, 50);
+            }
+        }
+
+        function encodeCommand(cmd) {
+            const buffer = new ArrayBuffer(7);  // Max 7 bytes für UPDATE_PARAM
+            
+            if (cmd.command === "SAVE_PARAMS") {
+                writeUint8(buffer, 0, CMD_SAVE_PARAMS);
+                return buffer.slice(0, 2);
+            } else if (cmd.command === "RESET_TRIM") {
+                writeUint8(buffer, 0, CMD_RESET_TRIM);
+                return buffer.slice(0, 2);
+            } else {
+                // UPDATE_PARAM - find which parameter was changed
+                let paramId = -1;
+                let value = 0;
+                
+                if (cmd.trim_pitch !== undefined) { paramId = PARAM_TRIM_PITCH; value = cmd.trim_pitch; }
+                else if (cmd.trim_roll !== undefined) { paramId = PARAM_TRIM_ROLL; value = cmd.trim_roll; }
+                else if (cmd.ddr_pitch !== undefined) { paramId = PARAM_DDR_PITCH; value = cmd.ddr_pitch; }
+                else if (cmd.ddr_roll !== undefined) { paramId = PARAM_DDR_ROLL; value = cmd.ddr_roll; }
+                else if (cmd.expo_pitch !== undefined) { paramId = PARAM_EXPO_PITCH; value = cmd.expo_pitch; }
+                else if (cmd.expo_roll !== undefined) { paramId = PARAM_EXPO_ROLL; value = cmd.expo_roll; }
+                else if (cmd.expo_throttle !== undefined) { paramId = PARAM_EXPO_THROTTLE; value = cmd.expo_throttle; }
+                else if (cmd.throttle_to_pitch !== undefined) { paramId = PARAM_THROTTLE_TO_PITCH; value = cmd.throttle_to_pitch; }
+                else if (cmd.throttle_min !== undefined) { paramId = PARAM_THROTTLE_MIN; value = cmd.throttle_min; }
+                else if (cmd.throttle_max !== undefined) { paramId = PARAM_THROTTLE_MAX; value = cmd.throttle_max; }
+                
+                if (paramId >= 0) {
+                    writeUint8(buffer, 0, CMD_UPDATE_PARAM);
+                    writeUint8(buffer, 1, paramId);
+                    writeFloat32(buffer, 2, value);
+                    return buffer.slice(0, 7);
+                }
+                
+                return buffer.slice(0, 1);  // Fallback
             }
         }
 
@@ -878,60 +1009,69 @@
         // ============ TELEMETRIE ============
         function updateTelemetry(data) {
             Object.assign(currentData, data);
-            
-            // *** VARIO-SOUND AKTUALISIEREN ***
+
+            // Vario-Sound nur dann neu triggern, wenn neue Steigrate angekommen ist
             if (typeof data.v_speed !== 'undefined') {
-                updateVarioSound(data.v_speed, data.v_min || currentData.v_min, data.v_max || currentData.v_max);
-                
-                // Update Vario Display in Topbar
-                document.getElementById('varioSpeedDisplay').textContent = data.v_speed.toFixed(2);
-                
-                // Status für RX Telemetry
+                updateVarioSound(
+                    currentData.v_speed,
+                    currentData.v_min,
+                    currentData.v_max
+                );
+
+                document.getElementById('varioSpeedDisplay').textContent =
+                    Number(currentData.v_speed).toFixed(2);
+
                 let statusText = 'neutral';
-                if (Math.abs(data.v_speed) >= 0) {
-                    statusText = data.v_speed > 0 ? '↗ Steigt' : '↘ Sinkt';
+                if (currentData.v_speed > 0) {
+                    statusText = '↗ Steigt';
+                } else if (currentData.v_speed < 0) {
+                    statusText = '↘ Sinkt';
                 }
-                
-                updateTelemDisplay('v_speed', data.v_speed, 2, ' m/s');
+
                 document.getElementById('telem-v_status').textContent = statusText;
             }
-            
-            map.setView([data.gps_lat || 46.8, data.gps_lon || 7.8], 16);
-            marker.setLatLng([data.gps_lat || 46.8, data.gps_lon || 7.8]);
 
-            // Pfeil rotieren - das INNERE Element drehen
-            const heading = data.heading || 0;
-            const iconElement = marker.getElement();
-            if (iconElement) {
-                const innerDiv = iconElement.querySelector('.arrow-marker-inner');
-                if (innerDiv) {
-                    innerDiv.style.transform = `rotate(${heading}deg)`;
+            if (map && marker) {
+                map.setView([currentData.gps_lat || 46.8, currentData.gps_lon || 7.8], 16);
+                marker.setLatLng([currentData.gps_lat || 46.8, currentData.gps_lon || 7.8]);
+
+                const heading = currentData.heading || 0;
+                const iconElement = marker.getElement();
+                if (iconElement) {
+                    const innerDiv = iconElement.querySelector('.arrow-marker-inner');
+                    if (innerDiv) {
+                        innerDiv.style.transform = `rotate(${heading}deg)`;
+                    }
                 }
             }
 
-            const roll = data.roll_angle || 0;
-            const pitch = data.pitch_angle || 0;
-            document.getElementById('horizonNeedle').style.transform = 
+            const roll = currentData.roll_angle || currentData.roll || 0;
+            const pitch = currentData.pitch_angle || currentData.pitch || 0;
+            document.getElementById('horizonNeedle').style.transform =
                 `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
 
-            updateTelemDisplay('armed', data.armed, 1, '');
-            updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
-            updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
-            updateTelemDisplay('pitch', data.pitch, 0, '%');
-            updateTelemDisplay('roll', data.roll, 0, '%');
-            updateTelemDisplay('throttle', data.throttle, 0, '%');
-            updateTelemDisplay('trim_pitch', data.trim_pitch, 0, '%');
-            updateTelemDisplay('trim_roll', data.trim_roll, 0, '%');
-            updateTelemDisplay('lat', data.gps_lat, 6, '°');
-            updateTelemDisplay('lon', data.gps_lon, 6, '°');
-            updateTelemDisplay('gps_altitude', data.gps_altitude, 1, 'm');  
-            updateTelemDisplay('heading', data.heading, 1, '°');
-            updateTelemDisplay('hdop', data.gps_hdop, 2, '');
-            updateTelemDisplay('satellites', data.gps_satellites, 0, '');
-            updateTelemDisplay('altitude', data.altitude, 1, 'm');
-            updateTelemDisplay('max_altitude', data.max_altitude, 1, 'm');
-            updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
-            updateParameterDisplay(data);
+            updateTelemDisplay('armed', currentData.armed, 1, '');
+            updateTelemDisplay('tx_voltage', currentData.tx_voltage, 2, 'V');
+            updateTelemDisplay('throttle_voltage', currentData.throttle_voltage, 2, 'V');
+            updateTelemDisplay('pitch', currentData.pitch, 0, '%');
+            updateTelemDisplay('roll', currentData.roll, 0, '%');
+            updateTelemDisplay('throttle', currentData.throttle, 0, '%');
+            updateTelemDisplay('trim_pitch', currentData.trim_pitch, 0, '%');
+            updateTelemDisplay('trim_roll', currentData.trim_roll, 0, '%');
+
+            updateTelemDisplay('lat', currentData.gps_lat, 6, '°');
+            updateTelemDisplay('lon', currentData.gps_lon, 6, '°');
+            updateTelemDisplay('gps_altitude', currentData.gps_altitude, 1, 'm');
+            updateTelemDisplay('heading', currentData.heading, 1, '°');
+            updateTelemDisplay('hdop', currentData.gps_hdop, 2, '');
+            updateTelemDisplay('satellites', currentData.gps_satellites, 0, '');
+
+            updateTelemDisplay('altitude', currentData.altitude, 1, 'm');
+            updateTelemDisplay('max_altitude', currentData.max_altitude, 1, 'm');
+            updateTelemDisplay('rx_voltage', currentData.rx_voltage, 2, 'V');
+            updateTelemDisplay('v_speed', currentData.v_speed, 2, ' m/s');
+
+            updateParameterDisplay(currentData);
         }
 
         function updateTelemDisplay(key, value, decimal, unit = '') {
@@ -1031,14 +1171,14 @@
         }
 
         async function saveParams() {
-            if (!rxChar) { 
+            if (!cmdChar) { 
                 addLog("✗ Nicht verbunden!"); 
                 return; 
             }
             try {
-                const cmd = { command: "SAVE_PARAMS" };
-                const jsonStr = JSON.stringify(cmd);
-                await rxChar.writeValue(new TextEncoder().encode(jsonStr));
+                const buffer = new ArrayBuffer(1);
+                writeUint8(buffer, 0, CMD_SAVE_PARAMS);
+                await cmdChar.writeValue(buffer);
                 addLog("→ SAVE_PARAMS gesendet!");
             } catch (error) {
                 addLog("✗ Save-Fehler: " + error.message);
