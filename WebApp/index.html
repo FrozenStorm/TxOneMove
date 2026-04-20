@@ -609,6 +609,8 @@
         const PARAM_THROTTLE_TO_PITCH    = 7;
         const PARAM_THROTTLE_MIN         = 8;
         const PARAM_THROTTLE_MAX         = 9;
+        const PARAM_V_MIN                = 10;
+        const PARAM_V_MAX                = 11;
 
         // ============ BINARY READ/WRITE HELPERS ============
         function readFloat32(buffer, offset) {
@@ -805,29 +807,6 @@
         let cmdChar = null;
         let map = null;
         let marker = null;
-        let currentData = {
-            gps_lat: 46.8,
-            gps_lon: 7.8,
-            pitch: 0,
-            roll: 0,
-            heading: 0,
-            v_speed: 0,
-            v_min: 50,
-            v_max: 500,
-            tx_voltage: 0,
-            altitude: 0,
-            rx_voltage: 0,
-            ddr_pitch: 0,
-            ddr_roll: 0,
-            expo_pitch: 0,
-            expo_roll: 0,
-            expo_throttle: 0,
-            throttle_to_pitch: 0,
-            trim_pitch: 0,
-            trim_roll: 0,
-            throttle_max: 0,
-            throttle_min: 0
-        };
 
         // ============ BLE FUNKTIONEN ============
         async function connectBLE() {
@@ -921,8 +900,8 @@
                 data.throttle_to_pitch = readFloat32(buffer, offset); offset += 4;
                 data.throttle_min = readFloat32(buffer, offset); offset += 4;
                 data.throttle_max = readFloat32(buffer, offset); offset += 4;
-                data.v_max = readUint16(buffer, offset); offset += 2;
-                data.v_min = readUint16(buffer, offset); offset += 2;
+                data.v_max = readFloat32(buffer, offset); offset += 4;
+                data.v_min = readFloat32(buffer, offset); offset += 4;
 
                 updateTelemetry(data);
             } catch (error) {
@@ -984,6 +963,8 @@
                 else if (cmd.throttle_to_pitch !== undefined) { paramId = PARAM_THROTTLE_TO_PITCH; value = cmd.throttle_to_pitch; }
                 else if (cmd.throttle_min !== undefined) { paramId = PARAM_THROTTLE_MIN; value = cmd.throttle_min; }
                 else if (cmd.throttle_max !== undefined) { paramId = PARAM_THROTTLE_MAX; value = cmd.throttle_max; }
+                else if (cmd.v_min !== undefined) { paramId = PARAM_V_MIN; value = cmd.v_min; }
+                else if (cmd.v_max !== undefined) { paramId = PARAM_V_MAX; value = cmd.v_max; }
                 
                 if (paramId >= 0) {
                     writeUint8(buffer, 0, CMD_UPDATE_PARAM);
@@ -1008,23 +989,22 @@
 
         // ============ TELEMETRIE ============
         function updateTelemetry(data) {
-            Object.assign(currentData, data);
 
             // Vario-Sound nur dann neu triggern, wenn neue Steigrate angekommen ist
             if (typeof data.v_speed !== 'undefined') {
                 updateVarioSound(
-                    currentData.v_speed,
-                    currentData.v_min,
-                    currentData.v_max
+                    data.v_speed,
+                    data.v_min,
+                    data.v_max
                 );
 
                 document.getElementById('varioSpeedDisplay').textContent =
-                    Number(currentData.v_speed).toFixed(2);
+                    Number(data.v_speed).toFixed(2);
 
                 let statusText = 'neutral';
-                if (currentData.v_speed > 0) {
+                if (data.v_speed > 0) {
                     statusText = '↗ Steigt';
-                } else if (currentData.v_speed < 0) {
+                } else if (data.v_speed < 0) {
                     statusText = '↘ Sinkt';
                 }
 
@@ -1032,10 +1012,10 @@
             }
 
             if (map && marker) {
-                map.setView([currentData.gps_lat || 46.8, currentData.gps_lon || 7.8], 16);
-                marker.setLatLng([currentData.gps_lat || 46.8, currentData.gps_lon || 7.8]);
+                map.setView([data.gps_lat || 46.8, data.gps_lon || 7.8], 16);
+                marker.setLatLng([data.gps_lat || 46.8, data.gps_lon || 7.8]);
 
-                const heading = currentData.heading || 0;
+                const heading = data.heading || 0;
                 const iconElement = marker.getElement();
                 if (iconElement) {
                     const innerDiv = iconElement.querySelector('.arrow-marker-inner');
@@ -1045,33 +1025,33 @@
                 }
             }
 
-            const roll = currentData.roll_angle || currentData.roll || 0;
-            const pitch = currentData.pitch_angle || currentData.pitch || 0;
+            const roll = data.roll_angle || data.roll || 0;
+            const pitch = data.pitch_angle || data.pitch || 0;
             document.getElementById('horizonNeedle').style.transform =
                 `rotateZ(${roll}deg) translateY(${pitch * 2}px)`;
 
-            updateTelemDisplay('armed', currentData.armed, 1, '');
-            updateTelemDisplay('tx_voltage', currentData.tx_voltage, 2, 'V');
-            updateTelemDisplay('throttle_voltage', currentData.throttle_voltage, 2, 'V');
-            updateTelemDisplay('pitch', currentData.pitch, 0, '%');
-            updateTelemDisplay('roll', currentData.roll, 0, '%');
-            updateTelemDisplay('throttle', currentData.throttle, 0, '%');
-            updateTelemDisplay('trim_pitch', currentData.trim_pitch, 0, '%');
-            updateTelemDisplay('trim_roll', currentData.trim_roll, 0, '%');
+            updateTelemDisplay('armed', data.armed, 1, '');
+            updateTelemDisplay('tx_voltage', data.tx_voltage, 2, 'V');
+            updateTelemDisplay('throttle_voltage', data.throttle_voltage, 2, 'V');
+            updateTelemDisplay('pitch', data.pitch, 0, '%');
+            updateTelemDisplay('roll', data.roll, 0, '%');
+            updateTelemDisplay('throttle', data.throttle, 0, '%');
+            updateTelemDisplay('trim_pitch', data.trim_pitch, 0, '%');
+            updateTelemDisplay('trim_roll', data.trim_roll, 0, '%');
 
-            updateTelemDisplay('lat', currentData.gps_lat, 6, '°');
-            updateTelemDisplay('lon', currentData.gps_lon, 6, '°');
-            updateTelemDisplay('gps_altitude', currentData.gps_altitude, 1, 'm');
-            updateTelemDisplay('heading', currentData.heading, 1, '°');
-            updateTelemDisplay('hdop', currentData.gps_hdop, 2, '');
-            updateTelemDisplay('satellites', currentData.gps_satellites, 0, '');
+            updateTelemDisplay('lat', data.gps_lat, 6, '°');
+            updateTelemDisplay('lon', data.gps_lon, 6, '°');
+            updateTelemDisplay('gps_altitude', data.gps_altitude, 1, 'm');
+            updateTelemDisplay('heading', data.heading, 1, '°');
+            updateTelemDisplay('hdop', data.gps_hdop, 2, '');
+            updateTelemDisplay('satellites', data.gps_satellites, 0, '');
 
-            updateTelemDisplay('altitude', currentData.altitude, 1, 'm');
-            updateTelemDisplay('max_altitude', currentData.max_altitude, 1, 'm');
-            updateTelemDisplay('rx_voltage', currentData.rx_voltage, 2, 'V');
-            updateTelemDisplay('v_speed', currentData.v_speed, 2, ' m/s');
+            updateTelemDisplay('altitude', data.altitude, 1, 'm');
+            updateTelemDisplay('max_altitude', data.max_altitude, 1, 'm');
+            updateTelemDisplay('rx_voltage', data.rx_voltage, 2, 'V');
+            updateTelemDisplay('v_speed', data.v_speed, 2, ' m/s');
 
-            updateParameterDisplay(currentData);
+            updateParameterDisplay(data);
         }
 
         function updateTelemDisplay(key, value, decimal, unit = '') {

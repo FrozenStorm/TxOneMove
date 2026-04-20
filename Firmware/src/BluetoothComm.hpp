@@ -25,6 +25,8 @@
 #define PARAM_THROTTLE_TO_PITCH    7
 #define PARAM_THROTTLE_MIN         8
 #define PARAM_THROTTLE_MAX         9
+#define PARAM_V_MIN                10
+#define PARAM_V_MAX                11
 
 BLECharacteristic* pDataChar = nullptr;
 BLECharacteristic* pCommandChar = nullptr;
@@ -219,6 +221,12 @@ void BluetoothComm::doFunction()
                 case PARAM_THROTTLE_MAX:
                     radioData.analogToDigitalData.throttleLimit.max = paramValue;
                     break;
+                case PARAM_V_MIN:
+                    radioData.transmitterData.v_sound_min = paramValue;
+                    break;
+                case PARAM_V_MAX:
+                    radioData.transmitterData.v_sound_max = paramValue;
+                    break;
             }
             cmdId = 0; // Reset command ID after processing
             interrupts();
@@ -264,7 +272,7 @@ void BluetoothComm::doFunction()
         writeFloat(buffer, offset, radioData.digitalData.heading);
     }
 
-    // PARAM_DATA (37 bytes)
+    // PARAM_DATA (41 bytes)
     {
         writeFloat(buffer, offset, radioData.dualRateData.pitch * 100);
         writeFloat(buffer, offset, radioData.dualRateData.roll * 100);
@@ -274,8 +282,8 @@ void BluetoothComm::doFunction()
         writeFloat(buffer, offset, radioData.mixerData.throttleToPitch * 100);
         writeFloat(buffer, offset, radioData.analogToDigitalData.throttleLimit.min);
         writeFloat(buffer, offset, radioData.analogToDigitalData.throttleLimit.max);
-        writeUint16(buffer, offset, (uint16_t)radioData.transmitterData.v_sound_max);
-        writeUint16(buffer, offset, (uint16_t)radioData.transmitterData.v_sound_min);
+        writeFloat(buffer, offset, radioData.transmitterData.v_sound_max);
+        writeFloat(buffer, offset, radioData.transmitterData.v_sound_min);
     }
 
     pDataChar->setValue(buffer, offset);
