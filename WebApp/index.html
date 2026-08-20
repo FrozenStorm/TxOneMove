@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TxOneMove</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#070A10">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TxOneMove">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="icons/favicon-32.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-compass/dist/leaflet-compass.min.css" />
@@ -426,10 +433,48 @@
         letter-spacing: .08em;
         text-transform: uppercase;
         }
+
+        .update-toast{
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%) translateY(120%);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: var(--surface-2);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow);
+        color: var(--text);
+        font-size: 13px;
+        max-width: calc(100% - 32px);
+        transition: transform .25s ease;
+        }
+        .update-toast.visible{
+        transform: translateX(-50%) translateY(0);
+        }
+        .update-toast button{
+        border: none;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-weight: 700;
+        font-size: 12px;
+        color: #04121a;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        cursor: pointer;
+        white-space: nowrap;
+        }
     </style>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><circle cx='96' cy='96' r='90' fill='%232196F3'/><path d='M96,40 L130,140 L96,110 L62,140 Z' fill='white'/></svg>">
 </head>
 <body>
+    <div class="update-toast" id="updateToast">
+        <span>Neue Version verfügbar</span>
+        <button id="updateToastBtn" type="button">Neu laden</button>
+    </div>
     <header class="topbar">
         <div class="brand">
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -1199,6 +1244,57 @@
             initMap();
             addLog("WebApp bereit. Klicke 'Verbinden'");
         });
+
+        // ============ PWA: Installierbarkeit & Offline-Cache ============
+        function showUpdateToast(onConfirm) {
+            const toast = document.getElementById('updateToast');
+            const btn = document.getElementById('updateToastBtn');
+            toast.classList.add('visible');
+            btn.onclick = () => {
+                toast.classList.remove('visible');
+                onConfirm();
+            };
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').then((reg) => {
+                    addLog("Service Worker aktiv – App ist offlinefähig");
+
+                    // Bei bestehender Internetverbindung nach neuer Version suchen:
+                    // beim Start, sobald die Verbindung wiederkommt, und stündlich
+                    // solange die App offen bleibt.
+                    const checkForUpdate = () => {
+                        if (navigator.onLine) reg.update().catch(() => {});
+                    };
+                    checkForUpdate();
+                    window.addEventListener('online', checkForUpdate);
+                    setInterval(checkForUpdate, 60 * 60 * 1000);
+
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (!newWorker) return;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                addLog("Update heruntergeladen – bereit zum Neuladen");
+                                showUpdateToast(() => {
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                });
+                            }
+                        });
+                    });
+                }).catch((err) => {
+                    addLog("✗ Service Worker Fehler: " + err.message);
+                });
+
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
     </script>
 </body>
 </html>
