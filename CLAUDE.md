@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 TxOneMove: a custom hand-held RC transmitter (single-hand throttle + BNO055 orientation control) built around a Seeed XIAO ESP32-S3. The repo has four largely independent parts:
 
 - `Firmware/` — PlatformIO/Arduino C++ firmware running on the ESP32-S3. This is where almost all engineering work happens.
-- `WebApp/index.html` — a single-file PWA that connects to the transmitter over Web Bluetooth to show live telemetry and edit tunable parameters.
+- `WebApp/` — an installable PWA (`index.html` + `manifest.json` + `service-worker.js` + `icons/`) that connects to the transmitter over Web Bluetooth to show live telemetry and edit tunable parameters.
 - `Python/` — desktop helper scripts (serial log visualization, LeCroy UART capture) used for debugging/tuning off-device.
 - `Case/` — 3D-printable enclosure (STL/3MF), not source code.
 
@@ -58,6 +58,14 @@ Persistence (`RadioData::store*/load*`) uses ESP32 `Preferences` (NVS) under nam
 - Service/characteristic UUIDs, `CMD_*` command IDs, and `PARAM_*` parameter IDs are duplicated as `#define`s in `BluetoothComm.hpp` and as JS `const`s in `index.html` (search for `PARAM_` / `CMD_` in both files).
 - The NOTIFY payload is a hand-packed little-endian byte buffer built field-by-field in `BluetoothComm::doFunction()` (grouped in comments as TX_DATA/RX_DATA/GPS_DATA/PARAM_DATA); `index.html`'s BLE notification handler (`readFloat32`/`readFloat64`/`readUint16`/`readUint8` around line 870+) decodes it with the exact same field order and widths. Field order, byte width, and units (e.g. many percentages are transmitted ×100) must match exactly on both ends.
 - The WRITE characteristic carries a `CMD_*` byte, and for `CMD_UPDATE_PARAM` a `PARAM_*` id byte plus a little-endian float — decoded in `BluetoothComm.hpp`'s `RxCallback::onWrite`.
+
+## WebApp: PWA install & offline cache
+
+`WebApp/service-worker.js` precaches the app shell (`index.html`, `manifest.json`, `icons/*`, and the Leaflet + leaflet-control-compass CDN files) into a versioned cache (`CACHE_VERSION` at the top of the file) so the app installs on a phone and works fully offline, including the map UI chrome. OpenStreetMap tiles are cached opportunistically at runtime (cache-first, capped at `MAX_TILE_CACHE_ENTRIES`) so previously viewed map areas stay available offline, but the whole map isn't pre-downloaded.
+
+**Whenever you change any precached file** (`index.html`, `manifest.json`, or anything under `icons/`), bump `CACHE_VERSION` in `service-worker.js` — that's what makes the browser notice the service worker changed and start the update flow; without it, installed clients keep serving the old cached files indefinitely. Behavior: while online the page calls `registration.update()` on load, on reconnect, and hourly; if a new worker installs, a toast ("Neue Version verfügbar") lets the user apply it on their own terms via `postMessage({type:'SKIP_WAITING'})` + reload, rather than silently swapping the app shell under a live BLE session.
+
+The `icons/` PNGs were generated programmatically (no image tool in this environment) — see the gradient-ring mark matching the CSS `--accent`/`--accent-2` brand colors; regenerate with any image tool if the brand mark changes, keeping the same filenames/sizes referenced from `manifest.json` and the `<link rel="apple-touch-icon">`/`<link rel="icon">` tags in `index.html`.
 
 ## Python helper scripts
 
